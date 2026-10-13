@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:planner/core/utils/app_colors.dart';
 import 'package:planner/core/utils/app_layout.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/settings_provider.dart';
 
@@ -28,30 +29,13 @@ class _UsdRateWidgetState extends State<UsdRateWidget> {
   @override
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-    final primaryColor = CupertinoTheme.of(context).primaryColor;
 
     return Consumer<SettingsProvider>(
       builder: (context, settings, _) {
         final card = Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground(context),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.separator(context), width: 0.5),
-            boxShadow: [
-              BoxShadow(
-                color: primaryColor.withValues(alpha: isDark ? 0.12 : 0.05),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: AppColors.cardShadow(context),
-                blurRadius: 6,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
+          decoration: AppCard.container(context, radius: AppRadius.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

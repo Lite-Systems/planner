@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_layout.dart';
+import '../../core/utils/app_tokens.dart';
 import '../../models/expense.dart';
 import '../../models/expense_category.dart';
 import '../../models/payment_method.dart';
@@ -27,6 +28,20 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen> {
   String _selectedCategoryId = 'all';
   DateTime? _selectedMonth;
+  bool _entranceDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Entrance animations play once on first layout, then the screen renders
+    // statically. Replaying slide/fade on every data change or scroll remount
+    // is a big source of desktop jank.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_entranceDone) {
+        setState(() => _entranceDone = true);
+      }
+    });
+  }
 
   // ── Safe helpers ────────────────────────────────────────────────────────────
 
@@ -112,7 +127,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 slivers: [
                   // ── Total Card ─────────────────────────────────────────────
                   SliverToBoxAdapter(
-                    child: desktop
+                    child: (desktop || _entranceDone)
                         ? _buildTotalCard(
                             monthTotal,
                             monthFiltered.length,
@@ -136,7 +151,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   // ── Chart ──────────────────────────────────────────────────
                   if (monthExpensesByCategory.isNotEmpty)
                     SliverToBoxAdapter(
-                      child: desktop
+                      child: (desktop || _entranceDone)
                           ? _buildChartSection(
                               monthExpensesByCategory,
                               expProvider.categories,
@@ -167,10 +182,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                         child: Text(
                           '${_selectedCategoryId == 'all' ? monthFiltered.length : filtered.length} ${'expenseRecords'.tr()}',
-                          style: const TextStyle(
-                            fontSize: 13,
+                          style: AppText.caption(context).copyWith(
                             fontWeight: FontWeight.w600,
-                            color: CupertinoColors.systemGrey,
                           ),
                         ),
                       ),
@@ -239,15 +252,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.expensePrimary.withValues(alpha: 0.35),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.xxl),
+        boxShadow: AppShadows.hero(AppColors.expensePrimary, alpha: 0.35),
       ),
       child: Stack(
         children: [
@@ -401,26 +407,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   ) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground.resolveFrom(context),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: CupertinoColors.separator.resolveFrom(context),
-          width: 0.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.expensePrimary.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: AppCard.container(context, radius: AppRadius.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -760,7 +747,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       onTap: () => _navigateTo(context, AddExpenseScreen(expense: expense)),
       onDelete: () => _confirmDelete(context, expense, expProvider),
     );
-    if (AppLayout.of(context).hasSidebar) return card;
+    if (AppLayout.of(context).hasSidebar || _entranceDone || i >= 8) {
+      return card;
+    }
     return card
         .animate()
         .fadeIn(

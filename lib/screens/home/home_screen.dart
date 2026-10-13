@@ -8,6 +8,7 @@ import 'package:flutter/material.dart'
         ThemeData;
 import 'package:planner/core/utils/app_colors.dart';
 import 'package:planner/core/utils/app_layout.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:planner/core/utils/no_animation_route.dart';
 import 'package:planner/providers/expenses_provider.dart';
 import 'package:planner/providers/income_provider.dart';
@@ -40,24 +41,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final projectProvider = Provider.of<ProjectProvider>(
-      context,
-      listen: false,
-    );
-    final incomeProvider = Provider.of<IncomeProvider>(context, listen: false);
-    final settings = Provider.of<SettingsProvider>(context, listen: false);
-    projectProvider.onTaskPaidChanged = (task, isPaid) async {
-      if (isPaid) {
-        await incomeProvider.addIncomeFromTask(task, settings.currency);
-      } else {
-        await incomeProvider.removeIncomeForTask(task.id);
-      }
-    };
-  }
-
   void _openProjects() {
     AppShellScope.open(context, AppSection.projects, const ProjectsScreen());
   }
@@ -81,132 +64,89 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final layout = AppLayout.of(context);
-    return Consumer<ProjectProvider>(
-      builder: (_, projectProvider, child) {
-        return CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(
-            leading: widget.onMenuTap == null
-                ? null
-                : CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: widget.onMenuTap,
-                    child: const FaIcon(FontAwesomeIcons.bars, size: 22),
-                  ),
-            middle: Text('appName'.tr()),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Selector<SettingsProvider, bool>(
-                  selector: (_, s) => s.hideAmounts,
-                  builder: (_, hideAmounts, _) => CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: () => context
-                        .read<SettingsProvider>()
-                        .setHideAmounts(!hideAmounts),
-                    child: FaIcon(
-                      hideAmounts
-                          ? FontAwesomeIcons.eyeSlash
-                          : FontAwesomeIcons.eye,
-                      size: 18,
-                    ),
-                  ),
+    return CupertinoPageScaffold(
+      navigationBar: CupertinoNavigationBar(
+        leading: widget.onMenuTap == null
+            ? null
+            : CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: widget.onMenuTap,
+                child: const FaIcon(FontAwesomeIcons.bars, size: 22),
+              ),
+        middle: Text('appName'.tr()),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Selector<SettingsProvider, bool>(
+              selector: (_, s) => s.hideAmounts,
+              builder: (_, hideAmounts, _) => CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => context
+                    .read<SettingsProvider>()
+                    .setHideAmounts(!hideAmounts),
+                child: FaIcon(
+                  hideAmounts
+                      ? FontAwesomeIcons.eyeSlash
+                      : FontAwesomeIcons.eye,
+                  size: 18,
                 ),
-                if (!layout.hasSidebar)
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    onPressed: _openProjects,
-                    child: const FaIcon(FontAwesomeIcons.briefcase, size: 20),
-                  ),
-              ],
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: Selector<SettingsProvider, (bool, double, bool)>(
-              selector: (_, s) =>
-                  (s.hideAmounts, s.cardPadding, s.isExpensesEnabled),
-              builder: (context, value, child) {
-                final hideAmounts = value.$1;
-                final pad = value.$2;
-                final expensesEnabled = value.$3;
-                final activeTasks = projectProvider.projects
-                    .expand(
-                      (p) => projectProvider
-                          .getTasks(p.id)
-                          .where((t) => t.isTimerRunning),
+            if (!layout.hasSidebar)
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: _openProjects,
+                child: const FaIcon(FontAwesomeIcons.briefcase, size: 20),
+              ),
+          ],
+        ),
+      ),
+      child: SafeArea(
+        // Only the density-driven pieces rebuild when these settings change;
+        // project/income/expenses data is subscribed per-section below.
+        child: Selector<SettingsProvider, (bool, double, bool)>(
+          selector: (_, s) =>
+              (s.hideAmounts, s.cardPadding, s.isExpensesEnabled),
+          builder: (context, value, child) {
+            final hideAmounts = value.$1;
+            final pad = value.$2;
+            final expensesEnabled = value.$3;
+            final previews = <Widget>[
+              _buildIncomePreview(context, pad),
+              if (expensesEnabled) _buildExpensesPreview(context, pad),
+            ];
+
+            return AppLayout.constrain(
+              ListView(
+                padding: const EdgeInsets.only(bottom: 100),
+                children: [
+                  _buildWelcomeHeader(context),
+                  if (!hideAmounts) const UsdRateWidget(),
+                  const HomeSummaryCards(),
+                  const _TaskProgressCard(),
+                  if (layout.isExpanded && expensesEnabled)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: previews[0]),
+                          Expanded(child: previews[1]),
+                        ],
+                      ),
                     )
-                    .toList();
-
-                final incomePreview = _buildIncomePreview(context, pad);
-                final expensesPreview = expensesEnabled
-                    ? _buildExpensesPreview(context, pad)
-                    : null;
-
-                return AppLayout.constrain(
-                  ListView(
-                    padding: const EdgeInsets.only(bottom: 100),
-                    children: [
-                      _buildWelcomeHeader(context),
-                      if (!hideAmounts) const UsdRateWidget(),
-                      const HomeSummaryCards(),
-                      _buildTaskProgressSummary(context, projectProvider, pad),
-                      if (layout.isExpanded && expensesPreview != null)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: incomePreview),
-                              Expanded(child: expensesPreview),
-                            ],
-                          ),
-                        )
-                      else ...[
-                        incomePreview,
-                        ?expensesPreview,
-                      ],
-                      _buildWalletStrip(context, layout),
-                      if (activeTasks.isNotEmpty) ...[
-                        _buildSectionHeader('activeTimers'.tr()),
-                        ...activeTasks.map(
-                          (task) => TaskCard(
-                            task: task,
-                            onTap: () {
-                              Project? project;
-                              for (final p in projectProvider.projects) {
-                                if (p.id == task.projectId) {
-                                  project = p;
-                                  break;
-                                }
-                              }
-                              if (project == null) return;
-                              _openProject(project);
-                            },
-                          ),
-                        ),
-                      ],
-                      if (projectProvider.projects.isNotEmpty) ...[
-                        _buildSectionHeader(
-                          'recentProjects'.tr(),
-                          onSeeAll: _openProjects,
-                        ),
-                        ...projectProvider.projects
-                            .take(3)
-                            .map(
-                              (project) => ProjectCard(
-                                project: project,
-                                onTap: () => _openProject(project),
-                              ),
-                            ),
-                      ],
-                    ],
-                  ),
-                  maxWidth: AppLayout.maxContentWidth,
-                );
-              },
-            ),
-          ),
-        );
-      },
+                  else
+                    ...previews,
+                  _buildWalletStrip(context, layout),
+                  _ActiveTimersSection(onOpenProject: _openProject),
+                  _RecentProjectsSection(onOpenProject: _openProject),
+                ],
+              ),
+              maxWidth: AppLayout.maxContentWidth,
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -221,62 +161,50 @@ class _HomeScreenState extends State<HomeScreen> {
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: EdgeInsets.all(pad),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground(context),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.separator(context), width: 0.5),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.cardShadow(context),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          decoration: AppCard.container(context, radius: AppRadius.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'recentIncome'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('recentIncome'.tr(), style: AppText.cardTitle(context)),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
                     minimumSize: const Size(0, 0),
                     onPressed: _openIncome,
                     child: Text(
                       'viewAll'.tr(),
-                      style: const TextStyle(fontSize: 14),
+                      style: AppText.body(context).copyWith(
+                        color: CupertinoTheme.of(context).primaryColor,
+                      ),
                     ),
                   ),
                 ],
               ),
               Text(
                 settings.formatMoney(total),
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.success,
-                ),
+                style: AppText.amount(context, AppColors.success),
               ),
               if (recent.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 ...recent.map(
                   (e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(e.title, overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            e.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.body(context),
+                          ),
                         ),
                         Text(
                           settings.formatMoney(e.amount, e.currency),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: AppText.body(context).copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ],
                     ),
@@ -308,10 +236,10 @@ class _HomeScreenState extends State<HomeScreen> {
               right: layout.hasSidebar ? 0 : 12,
               bottom: layout.hasSidebar ? 12 : 0,
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
               color: Color(method.color).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(
                 color: Color(method.color).withValues(alpha: 0.25),
                 width: 0.5,
@@ -324,14 +252,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   method.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: AppText.cardTitle(context),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   settings.formatMoney(balance),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+                  style: AppText.amount(
+                    context,
+                    CupertinoColors.label.resolveFrom(context),
                   ),
                 ),
               ],
@@ -366,18 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final card = Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: EdgeInsets.all(pad),
-          decoration: BoxDecoration(
-            color: AppColors.cardBackground(context),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.separator(context), width: 0.5),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.cardShadow(context),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          decoration: AppCard.container(context, radius: AppRadius.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -386,10 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     'recentExpenses'.tr(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: AppText.cardTitle(context),
                   ),
                   CupertinoButton(
                     padding: EdgeInsets.zero,
@@ -397,12 +311,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     onPressed: _openExpenses,
                     child: Text(
                       'viewAll'.tr(),
-                      style: const TextStyle(fontSize: 14),
+                      style: AppText.body(context).copyWith(
+                        color: CupertinoTheme.of(context).primaryColor,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Container(
@@ -504,128 +420,114 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'dashboardOverview'.tr(),
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-          ),
+          Text('dashboardOverview'.tr(), style: AppText.display(context)),
         ],
       ),
     );
   }
+}
 
-  Widget _buildTaskProgressSummary(
-    BuildContext context,
-    ProjectProvider provider,
-    double pad,
-  ) {
-    final total = provider.totalTasksCount;
-    final completed = provider.completedTasksCount;
-    final progress = total > 0 ? completed / total : 0.0;
+// ── Home sections, each with its own ProjectProvider subscription ────────────
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: EdgeInsets.all(pad),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground(context),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.separator(context), width: 0.5),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.cardShadow(context),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+/// Tasks progress card. Rebuilds only when task stats actually change.
+class _TaskProgressCard extends StatelessWidget {
+  const _TaskProgressCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProjectProvider>(
+      builder: (context, provider, _) {
+        final pad = context.select<SettingsProvider, double>(
+          (s) => s.cardPadding,
+        );
+        final total = provider.totalTasksCount;
+        final completed = provider.completedTasksCount;
+        final progress = total > 0 ? completed / total : 0.0;
+
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(pad),
+          decoration: AppCard.container(context, radius: AppRadius.xxl),
+          child: Column(
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'tasksProgress'.tr(),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'tasksProgress'.tr(),
+                        style: AppText.heading(context),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '$completed / $total ${'tasksCompleted'.tr()}',
+                        style: AppText.bodySecondary(context),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    '$completed / $total ${'tasksCompleted'.tr()}',
+                    '${(progress * 100).toInt()}%',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.secondaryLabel(context),
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: CupertinoTheme.of(context).primaryColor,
                     ),
                   ),
                 ],
               ),
-              Text(
-                '${(progress * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: CupertinoTheme.of(context).primaryColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              height: 12,
-              child: Theme(
-                data: AppColors.isDark(context)
-                    ? ThemeData.dark()
-                    : ThemeData.light(),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: AppColors.elevatedBackground(context),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    CupertinoTheme.of(context).primaryColor,
+              const SizedBox(height: 20),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  height: 12,
+                  child: Theme(
+                    data: AppColors.isDark(context)
+                        ? ThemeData.dark()
+                        : ThemeData.light(),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: AppColors.elevatedBackground(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        CupertinoTheme.of(context).primaryColor,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildSimpleStat(
-                context,
-                'totalTasks'.tr(),
-                total.toString(),
-                CupertinoColors.activeBlue,
-              ),
-              _buildSimpleStat(
-                context,
-                'pending'.tr(),
-                provider.pendingTasksCount.toString(),
-                CupertinoColors.systemOrange,
-              ),
-              _buildSimpleStat(
-                context,
-                'workingOn'.tr(),
-                provider.inProgressTasksCount.toString(),
-                CupertinoColors.systemGreen,
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _stat(
+                    context,
+                    'totalTasks'.tr(),
+                    total.toString(),
+                    CupertinoColors.activeBlue,
+                  ),
+                  _stat(
+                    context,
+                    'pending'.tr(),
+                    provider.pendingTasksCount.toString(),
+                    CupertinoColors.systemOrange,
+                  ),
+                  _stat(
+                    context,
+                    'workingOn'.tr(),
+                    provider.inProgressTasksCount.toString(),
+                    CupertinoColors.systemGreen,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildSimpleStat(
-    BuildContext context,
-    String label,
-    String value,
-    Color color,
-  ) {
+  Widget _stat(BuildContext context, String label, String value, Color color) {
     return Column(
       children: [
         Text(
@@ -647,22 +549,109 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+}
 
-  Widget _buildSectionHeader(String title, {VoidCallback? onSeeAll}) {
+/// Tasks with a running timer. TaskCard now owns its per-second ticking
+/// internally, so a ticking timer no longer rebuilds this section either.
+class _ActiveTimersSection extends StatelessWidget {
+  const _ActiveTimersSection({required this.onOpenProject});
+
+  final ValueChanged<Project> onOpenProject;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProjectProvider>(
+      builder: (context, projectProvider, _) {
+        final activeTasks = projectProvider.projects
+            .expand(
+              (p) =>
+                  projectProvider.getTasks(p.id).where((t) => t.isTimerRunning),
+            )
+            .toList();
+
+        if (activeTasks.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _HomeSectionHeader(title: 'activeTimers'.tr()),
+            ...activeTasks.map((task) {
+              Project? project;
+              for (final p in projectProvider.projects) {
+                if (p.id == task.projectId) {
+                  project = p;
+                  break;
+                }
+              }
+              return TaskCard(
+                task: task,
+                onTap: project == null ? null : () => onOpenProject(project!),
+              );
+            }),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Most recent projects (up to 3).
+class _RecentProjectsSection extends StatelessWidget {
+  const _RecentProjectsSection({required this.onOpenProject});
+
+  final ValueChanged<Project> onOpenProject;
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProjectProvider>(
+      builder: (context, projectProvider, _) {
+        if (projectProvider.projects.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _HomeSectionHeader(
+              title: 'recentProjects'.tr(),
+              onSeeAll: () => AppShellScope.open(
+                context,
+                AppSection.projects,
+                const ProjectsScreen(),
+              ),
+            ),
+            ...projectProvider.projects
+                .take(3)
+                .map(
+                  (project) => ProjectCard(
+                    project: project,
+                    onTap: () => onOpenProject(project),
+                  ),
+                ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _HomeSectionHeader extends StatelessWidget {
+  const _HomeSectionHeader({required this.title, this.onSeeAll});
+
+  final String title;
+  final VoidCallback? onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text(title, style: AppText.sectionTitle(context)),
           if (onSeeAll != null)
             CupertinoButton(
               padding: EdgeInsets.zero,
               onPressed: onSeeAll,
-              child: Text('viewAll'.tr(), style: const TextStyle(fontSize: 14)),
+              child: Text('viewAll'.tr(), style: AppText.body(context)),
             ),
         ],
       ),

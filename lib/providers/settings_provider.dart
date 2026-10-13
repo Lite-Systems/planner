@@ -91,6 +91,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setBiometricEnabled(bool value) async {
+    if (_isBiometricEnabled == value) return;
     final prefs = await SharedPreferences.getInstance();
     _isBiometricEnabled = value;
     if (!value) _isAppLocked = false;
@@ -99,6 +100,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setHideAmounts(bool value) async {
+    if (_hideAmounts == value) return;
     final prefs = await SharedPreferences.getInstance();
     _hideAmounts = value;
     await prefs.setBool('hideAmounts', value);
@@ -149,6 +151,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setDarkMode(bool value) async {
+    if (_isDarkMode == value) return;
     final prefs = await SharedPreferences.getInstance();
     _isDarkMode = value;
     await prefs.setBool('isDarkMode', value);
@@ -156,15 +159,19 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setCurrency(String value) async {
+    final normalized = CurrencyHelper.normalize(value);
+    if (_currency == normalized) return;
     final prefs = await SharedPreferences.getInstance();
-    _currency = CurrencyHelper.normalize(value);
+    _currency = normalized;
     await prefs.setString('currency', _currency);
     notifyListeners();
   }
 
   Future<void> setExpensesCurrency(String value) async {
+    final normalized = CurrencyHelper.normalize(value);
+    if (_expensesCurrency == normalized) return;
     final prefs = await SharedPreferences.getInstance();
-    _expensesCurrency = CurrencyHelper.normalize(value);
+    _expensesCurrency = normalized;
     await prefs.setString('expensesCurrency', _expensesCurrency);
     notifyListeners();
   }
@@ -180,6 +187,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setHourCost(double value) async {
+    if (_hourCost == value) return;
     final prefs = await SharedPreferences.getInstance();
     _hourCost = value;
     await prefs.setDouble('hourCost', value);
@@ -187,6 +195,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setShowHourCostInPrint(bool value) async {
+    if (_showHourCostInPrint == value) return;
     final prefs = await SharedPreferences.getInstance();
     _showHourCostInPrint = value;
     await prefs.setBool('showHourCostInPrint', value);
@@ -194,6 +203,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setShowTaskTimeInPrint(bool value) async {
+    if (_showTaskTimeInPrint == value) return;
     final prefs = await SharedPreferences.getInstance();
     _showTaskTimeInPrint = value;
     await prefs.setBool('showTaskTimeInPrint', value);
@@ -201,6 +211,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setShowTaskTypeInPrint(bool value) async {
+    if (_showTaskTypeInPrint == value) return;
     final prefs = await SharedPreferences.getInstance();
     _showTaskTypeInPrint = value;
     await prefs.setBool('showTaskTypeInPrint', value);
@@ -208,6 +219,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setShowSubtasksInPrint(bool value) async {
+    if (_showSubtasksInPrint == value) return;
     final prefs = await SharedPreferences.getInstance();
     _showSubtasksInPrint = value;
     await prefs.setBool('showSubtasksInPrint', value);
@@ -215,6 +227,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setExpensesEnabled(bool value) async {
+    if (_isExpensesEnabled == value) return;
     final prefs = await SharedPreferences.getInstance();
     _isExpensesEnabled = value;
     await prefs.setBool('isExpensesEnabled', value);
@@ -222,6 +235,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setTodosEnabled(bool value) async {
+    if (_isTodosEnabled == value) return;
     final prefs = await SharedPreferences.getInstance();
     _isTodosEnabled = value;
     await prefs.setBool('isTodosEnabled', value);
@@ -229,6 +243,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setCompactSidebar(bool value) async {
+    if (_compactSidebar == value) return;
     final prefs = await SharedPreferences.getInstance();
     _compactSidebar = value;
     await prefs.setBool('compactSidebar', value);
@@ -236,6 +251,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setCompactDensity(bool value) async {
+    if (_compactDensity == value) return;
     final prefs = await SharedPreferences.getInstance();
     _compactDensity = value;
     await prefs.setBool('compactDensity', value);
@@ -243,6 +259,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setRememberLastSection(bool value) async {
+    if (_rememberLastSection == value) return;
     final prefs = await SharedPreferences.getInstance();
     _rememberLastSection = value;
     await prefs.setBool('rememberLastSection', value);
@@ -250,6 +267,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   Future<void> setKeyboardShortcuts(bool value) async {
+    if (_keyboardShortcuts == value) return;
     final prefs = await SharedPreferences.getInstance();
     _keyboardShortcuts = value;
     await prefs.setBool('keyboardShortcuts', value);

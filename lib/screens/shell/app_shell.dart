@@ -63,6 +63,16 @@ class _AppShellState extends State<AppShell> {
   bool _drawerOpen = false;
   bool _didRestoreSection = false;
 
+  /// Drives the desktop content-pane scrollbar. Scrollables inside the active
+  /// page attach to it via [PrimaryScrollController].
+  final ScrollController _contentScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _contentScrollController.dispose();
+    super.dispose();
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -161,15 +171,16 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final layout = AppLayout.of(context);
-    final flags = context.select<SettingsProvider, (bool, bool, bool, bool, bool)>(
-      (s) => (
-        s.isExpensesEnabled,
-        s.isTodosEnabled,
-        s.compactSidebar,
-        s.keyboardShortcuts,
-        s.areSettingsLoaded,
-      ),
-    );
+    final flags = context
+        .select<SettingsProvider, (bool, bool, bool, bool, bool)>(
+          (s) => (
+            s.isExpensesEnabled,
+            s.isTodosEnabled,
+            s.compactSidebar,
+            s.keyboardShortcuts,
+            s.areSettingsLoaded,
+          ),
+        );
     final showExpenses = flags.$1;
     final showTodos = flags.$2;
     final compactSidebar = flags.$3;
@@ -249,9 +260,19 @@ class _AppShellState extends State<AppShell> {
                   borderRadius: BorderRadius.circular(expanded ? 18 : 0),
                   child: ColoredBox(
                     color: AppColors.cardBackground(context),
-                    child: KeyedSubtree(
-                      key: ValueKey(section),
-                      child: _pageFor(section, expanded),
+                    child: PrimaryScrollController(
+                      controller: _contentScrollController,
+                      child: CupertinoScrollbar(
+                        controller: _contentScrollController,
+                        thumbVisibility: true,
+                        thickness: 7,
+                        thicknessWhileDragging: 9,
+                        radius: const Radius.circular(4),
+                        child: KeyedSubtree(
+                          key: ValueKey(section),
+                          child: _pageFor(section, expanded),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -383,8 +404,9 @@ class _AppShellState extends State<AppShell> {
                       'v 1.0.0',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.secondaryLabel(context)
-                            .withValues(alpha: 0.6),
+                        color: AppColors.secondaryLabel(
+                          context,
+                        ).withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -566,8 +588,9 @@ class _SidebarItem extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: selected
-                ? CupertinoTheme.of(context).primaryColor
-                      .withValues(alpha: 0.12)
+                ? CupertinoTheme.of(
+                    context,
+                  ).primaryColor.withValues(alpha: 0.12)
                 : null,
             borderRadius: BorderRadius.circular(12),
           ),

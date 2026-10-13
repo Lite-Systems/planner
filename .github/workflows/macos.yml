@@ -11,7 +11,7 @@ permissions:
 
 env:
   MACOS_RELEASE_DIR: build/macos/Build/Products/Release
-  MACOS_DMG: build/macos/artifacts/fekra_pos.dmg
+  MACOS_DMG: build/macos/artifacts/planner.dmg
 
 jobs:
   build-macos:

@@ -1,5 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:planner/core/utils/no_animation_route.dart';
 import 'package:planner/models/income.dart';
 import 'package:planner/providers/income_provider.dart';
@@ -158,17 +160,15 @@ class _IncomeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppClickable(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: CupertinoColors.systemBackground.resolveFrom(context),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: CupertinoColors.separator.resolveFrom(context),
-          ),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: AppCard.container(
+          context,
+          radius: AppRadius.lg,
+          shadows: const [],
         ),
         child: Row(
           children: [
@@ -176,17 +176,11 @@ class _IncomeTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    income.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
+                  Text(income.title, style: AppText.cardTitle(context)),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     '${categoryName ?? 'other'.tr()} · ${DateFormat.yMMMd().format(income.date)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: CupertinoColors.systemGrey,
-                    ),
+                    style: AppText.caption(context),
                   ),
                 ],
               ),
@@ -196,13 +190,10 @@ class _IncomeTile extends StatelessWidget {
                 income.amount,
                 income.currency,
               ),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF10B981),
-              ),
+              style: AppText.amount(context, AppColors.success),
             ),
             CupertinoButton(
-              padding: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
               minimumSize: const Size(0, 0),
               onPressed: onDelete,
               child: const Icon(
