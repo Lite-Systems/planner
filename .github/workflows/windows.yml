@@ -1,0 +1,119 @@
+name: Build Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  WINDOWS_RELEASE_DIR: build/windows/x64/runner/Release
+  WINDOWS_INSTALLER: build/windows/artifacts/fekra_pos.exe
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Show build toolchain
+        run: flutter doctor -v
+
+      - name: Install locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build Windows release
+        run: flutter build windows --release --no-pub
+
+      - name: Bundle Visual C++ runtime
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $visualStudio = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $visualStudio) {
+            throw 'Visual Studio C++ tools were not found.'
+          }
+
+          $crt = Get-ChildItem -Path "$visualStudio\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory |
+            Sort-Object { [version]$_.Parent.Parent.Name } -Descending |
+            Select-Object -First 1
+          if (-not $crt) {
+            throw 'The x64 Visual C++ redistributable directory was not found.'
+          }
+
+          foreach ($dll in @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll')) {
+            Copy-Item -LiteralPath (Join-Path $crt.FullName $dll) -Destination $env:WINDOWS_RELEASE_DIR -ErrorAction Stop
+          }
+
+      - name: Validate release bundle
+        run: |
+          $requiredFiles = @(
+            'fekra_pos.exe',
+            'flutter_windows.dll',
+            'msvcp140.dll',
+            'vcruntime140.dll',
+            'vcruntime140_1.dll',
+            'data/app.so',
+            'data/icudtl.dat'
+          )
+          foreach ($file in $requiredFiles) {
+            $path = Join-Path $env:WINDOWS_RELEASE_DIR $file
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Required release file is missing: $path"
+            }
+            if ((Get-Item -LiteralPath $path).Length -eq 0) {
+              throw "Required release file is empty: $path"
+            }
+          }
+          $assets = Join-Path $env:WINDOWS_RELEASE_DIR 'data/flutter_assets'
+          if (-not (Test-Path -LiteralPath $assets -PathType Container)) {
+            throw "Flutter assets are missing: $assets"
+          }
+
+      - name: Package Windows installer
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $iscc -PathType Leaf)) {
+            throw 'Inno Setup 6 was not found on the runner.'
+          }
+          $versionLine = Select-String -Path pubspec.yaml -Pattern '^version:\s*(\d+\.\d+\.\d+)(?:\+\d+)?\s*$'
+          if (-not $versionLine) {
+            throw 'A numeric release version was not found in pubspec.yaml.'
+          }
+          $version = $versionLine.Matches[0].Groups[1].Value
+          & $iscc "/DAppVersion=$version" windows/installer/fekra_pos.iss
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows installer compilation failed.'
+          }
+          if (-not (Test-Path -LiteralPath $env:WINDOWS_INSTALLER -PathType Leaf)) {
+            throw 'The Windows installer was not created.'
+          }
+          if ((Get-Item -LiteralPath $env:WINDOWS_INSTALLER).Length -eq 0) {
+            throw 'The Windows installer is empty.'
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: ${{ env.WINDOWS_INSTALLER }}
+          if-no-files-found: error
+          retention-days: 30

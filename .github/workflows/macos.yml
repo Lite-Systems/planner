@@ -1,0 +1,94 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  MACOS_RELEASE_DIR: build/macos/Build/Products/Release
+  MACOS_DMG: build/macos/artifacts/fekra_pos.dmg
+
+jobs:
+  build-macos:
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - name: Enable macOS desktop
+        # printing still requires the project's CocoaPods integration on macOS.
+        run: flutter config --enable-macos-desktop --no-enable-swift-package-manager --no-enable-macos-arm64-only
+
+      - name: Show build toolchain
+        run: |
+          xcodebuild -version
+          pod --version
+          flutter doctor -v
+
+      - name: Install locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build macOS release
+        run: flutter build macos --release --no-pub
+
+      - name: Validate macOS app
+        run: |
+          shopt -s nullglob
+          apps=("$MACOS_RELEASE_DIR"/*.app)
+          if [ "${#apps[@]}" -ne 1 ]; then
+            echo 'Expected exactly one macOS app bundle in the release directory.' >&2
+            exit 1
+          fi
+          app="${apps[0]}"
+
+          plutil -lint "$app/Contents/Info.plist"
+          executable=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
+          test -x "$app/Contents/MacOS/$executable"
+          test -s "$app/Contents/Frameworks/FlutterMacOS.framework/FlutterMacOS"
+          test -s "$app/Contents/Frameworks/App.framework/App"
+          test -d "$app/Contents/Frameworks/App.framework/Resources/flutter_assets"
+          xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/MacOS/$executable"
+          xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/Frameworks/FlutterMacOS.framework/FlutterMacOS"
+          xcrun lipo -verify_arch arm64 x86_64 "$app/Contents/Frameworks/App.framework/App"
+          codesign --verify --deep --strict "$app"
+
+      - name: Create macOS DMG
+        run: |
+          shopt -s nullglob
+          apps=("$MACOS_RELEASE_DIR"/*.app)
+          staging=$(mktemp -d)
+          trap 'rm -rf "$staging"' EXIT
+
+          # ditto preserves bundle symlinks, resource forks, and executable permissions.
+          ditto "${apps[0]}" "$staging/fekra_pos.app"
+          ln -s /Applications "$staging/Applications"
+          mkdir -p "$(dirname "$MACOS_DMG")"
+          hdiutil create -volname 'Fekra POS' -srcfolder "$staging" \
+            -format UDZO -fs HFS+ -ov "$MACOS_DMG"
+          test -s "$MACOS_DMG"
+          hdiutil verify "$MACOS_DMG"
+
+      - name: Upload macOS release
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: ${{ env.MACOS_DMG }}
+          if-no-files-found: error
+          retention-days: 30

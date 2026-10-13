@@ -1,0 +1,78 @@
+name: Build Android AAB
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+env:
+  ANDROID_AAB_DIR: build/app/outputs/bundle/release
+  ANDROID_AAB: build/app/outputs/bundle/release/app-release.aab
+
+jobs:
+  build-aab:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        # AGP 8.11.1 / Gradle 8.14 / Kotlin 2.3.20 all require JDK 17.
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Show build toolchain
+        run: |
+          java -version
+          flutter doctor -v
+
+      - name: Install locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Build release App Bundle
+        # Signing comes from the committed android/key.properties + upload-keystore.jks.
+        # Gradle resolves storeFile relative to android/app/, where the keystore lives.
+        # Do NOT pass --no-pub: it skips the tool's release-mode regeneration of
+        # GeneratedPluginRegistrant, so dev-dependency plugins (integration_test)
+        # remain registered while their Gradle module is excluded from release,
+        # failing compilation with "package dev.flutter.plugins.integration_test
+        # does not exist".
+        run: flutter build appbundle --release
+
+      - name: Validate AAB
+        run: |
+          test -s "$ANDROID_AAB"
+
+          # Sanity check: the AAB is a valid zip containing the base module manifest.
+          if ! unzip -l "$ANDROID_AAB" | grep -q 'base/manifest/AndroidManifest.xml'; then
+            echo "::error::App Bundle is missing base/manifest/AndroidManifest.xml"
+            unzip -l "$ANDROID_AAB" | head -50
+            exit 1
+          fi
+
+          echo "AAB size: $(du -h "$ANDROID_AAB" | cut -f1)"
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: ${{ env.ANDROID_AAB }}
+          if-no-files-found: error
+          retention-days: 30
