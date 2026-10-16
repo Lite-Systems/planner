@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../models/expense_category.dart';
 import '../../../providers/expenses_provider.dart';
 import '../../../core/utils/app_colors.dart';
+import '../../../core/utils/app_layout.dart';
 
 class ExpenseCategoriesScreen extends StatelessWidget {
   const ExpenseCategoriesScreen({super.key});
@@ -47,16 +48,10 @@ class ExpenseCategoriesScreen extends StatelessWidget {
             if (categories.isEmpty) {
               return _buildEmptyState(context);
             }
-            return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            return _CategoryList(
               itemCount: categories.length,
-              itemBuilder: (_, i) {
-                final cat = categories[i];
-                return _buildCategoryItem(context, cat, provider, i)
-                    .animate(delay: Duration(milliseconds: i * 45))
-                    .fadeIn(duration: 280.ms)
-                    .slideX(begin: 0.05, end: 0);
-              },
+              itemBuilder: (context, i) =>
+                  _buildCategoryItem(context, categories[i], provider, i),
             );
           },
         ),
@@ -603,6 +598,48 @@ class ExpenseCategoriesScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Category list that plays its entrance animation only on the first frame
+/// (and never on desktop), so scrolling an item back into view does not replay
+/// the fade/slide.
+class _CategoryList extends StatefulWidget {
+  const _CategoryList({required this.itemCount, required this.itemBuilder});
+
+  final int itemCount;
+  final Widget Function(BuildContext context, int index) itemBuilder;
+
+  @override
+  State<_CategoryList> createState() => _CategoryListState();
+}
+
+class _CategoryListState extends State<_CategoryList> {
+  bool _entranceDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_entranceDone) setState(() => _entranceDone = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final desktop = AppLayout.of(context).hasSidebar;
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      itemCount: widget.itemCount,
+      itemBuilder: (context, i) {
+        final item = widget.itemBuilder(context, i);
+        if (desktop || _entranceDone || i >= 8) return item;
+        return item
+            .animate(delay: Duration(milliseconds: i * 45))
+            .fadeIn(duration: 280.ms)
+            .slideX(begin: 0.05, end: 0);
+      },
     );
   }
 }

@@ -26,6 +26,11 @@ class ExpenseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Only amount-affecting settings should rebuild this card.
+    context.select<SettingsProvider, (bool, String)>(
+      (s) => (s.hideAmounts, s.currency),
+    );
+    final settings = context.read<SettingsProvider>();
     final categoryColor = category != null
         ? Color(category!.color)
         : const Color(0xFF64748B);
@@ -146,7 +151,7 @@ class ExpenseCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      context.watch<SettingsProvider>().formatMoney(
+                      settings.formatMoney(
                         expense.amount,
                         expense.currency,
                       ),

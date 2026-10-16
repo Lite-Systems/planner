@@ -63,8 +63,6 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
       );
       if (_speechEnabled) {
         _startListening();
-      } else {
-        setState(() {});
       }
     } catch (e) {
       setState(() {
@@ -170,7 +168,7 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
     return AppLayout.sheet(
       context,
       Container(
-        height: MediaQuery.of(context).size.height * 0.85,
+        height: MediaQuery.sizeOf(context).height * 0.85,
         decoration: BoxDecoration(
           color: isDark
               ? const Color(0xFF1C1C1E)
@@ -214,15 +212,21 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: _taskNameController.text.trim().isEmpty
-                            ? null
-                            : _saveTask,
-                        child: Text(
-                          'save'.tr(),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _taskNameController,
+                        builder: (context, value, _) {
+                          final canSave = value.text.trim().isNotEmpty;
+                          return CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: canSave ? _saveTask : null,
+                            child: Text(
+                              'save'.tr(),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -440,7 +444,6 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
-                              onChanged: (val) => setState(() {}),
                             ),
                             const SizedBox(height: 16),
 

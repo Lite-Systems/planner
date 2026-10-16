@@ -10,6 +10,7 @@ library;
 import 'package:flutter/cupertino.dart';
 
 import 'app_colors.dart';
+import 'app_layout.dart';
 
 // ── Radius ───────────────────────────────────────────────────────────────────
 
@@ -134,10 +135,16 @@ abstract final class AppShadows {
   ];
 
   /// Stronger shadow for emphasized hero cards (colored gradient cards).
-  static List<BoxShadow> hero(Color tint, {double alpha = 0.28}) => [
+  /// On desktop the blur is trimmed — a wide blur is a real GPU cost on
+  /// integrated GPUs and the elevation reads the same at a smaller radius.
+  static List<BoxShadow> hero(
+    BuildContext context,
+    Color tint, {
+    double alpha = 0.28,
+  }) => [
     BoxShadow(
       color: tint.withValues(alpha: alpha),
-      blurRadius: 18,
+      blurRadius: AppLayout.of(context).hasSidebar ? 10 : 18,
       offset: const Offset(0, 8),
     ),
   ];

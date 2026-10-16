@@ -33,7 +33,9 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final locked = context.watch<SettingsProvider>().isAppLocked;
+    final locked = context.select<SettingsProvider, bool>(
+      (s) => s.isAppLocked,
+    );
     return Stack(
       fit: StackFit.expand,
       children: [widget.child, if (locked) const AuthScreen(isOverlay: true)],

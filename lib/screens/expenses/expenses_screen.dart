@@ -73,8 +73,24 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<ExpensesProvider, SettingsProvider, WalletProvider>(
-      builder: (_, expProvider, settings, walletProvider, child) {
+    return Consumer<ExpensesProvider>(
+      builder: (_, expProvider, child) {
+        context.select<SettingsProvider, (String, String, bool, double, double)>(
+          (s) => (
+            s.currency,
+            s.expensesCurrency,
+            s.hideAmounts,
+            s.usdToEgp,
+            s.usdToSar,
+          ),
+        );
+        final settings = context.read<SettingsProvider>();
+        // Rebuild only when the wallet *set* changes, not on every balance
+        // refresh (which now fires on each income/expense change).
+        context.select<WalletProvider, String>(
+          (w) => w.paymentMethods.map((m) => '${m.id}:${m.name}').join('|'),
+        );
+        final walletProvider = context.read<WalletProvider>();
         final desktop = AppLayout.of(context).hasSidebar;
         final allExpenses = expProvider.expenses;
         final availableMonths = _getAvailableMonths(allExpenses);
@@ -253,7 +269,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
-        boxShadow: AppShadows.hero(AppColors.expensePrimary, alpha: 0.35),
+        boxShadow: AppShadows.hero(context, AppColors.expensePrimary, alpha: 0.35),
       ),
       child: Stack(
         children: [
@@ -485,12 +501,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           // Chart body
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: ExpenseSummaryChart(
-              expensesByCategory: expensesByCategory,
-              categories: categories,
-              total: total,
-              currency: settings.expensesCurrency,
-              animate: !AppLayout.of(context).hasSidebar,
+            child: RepaintBoundary(
+              child: ExpenseSummaryChart(
+                expensesByCategory: expensesByCategory,
+                categories: categories,
+                total: total,
+                currency: settings.expensesCurrency,
+                animate: !AppLayout.of(context).hasSidebar,
+              ),
             ),
           ),
         ],

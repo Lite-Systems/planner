@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/models/project_task.dart';
 import 'package:planner/core/utils/app_tokens.dart';
+import 'package:planner/core/utils/timer_ticker.dart';
 import 'package:planner/providers/project_provider.dart';
 import 'package:planner/providers/settings_provider.dart';
 import 'package:planner/providers/wallet_provider.dart';
@@ -30,6 +30,13 @@ class _TaskCardState extends State<TaskCard> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
+
+    // Subscribe only to the settings that affect this card's amounts;
+    // unrelated settings churn (theme, rate refresh, …) must not rebuild it.
+    context.select<SettingsProvider, (bool, String)>(
+      (s) => (s.hideAmounts, s.currency),
+    );
+    final settings = context.read<SettingsProvider>();
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -82,10 +89,7 @@ class _TaskCardState extends State<TaskCard> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              context.watch<SettingsProvider>().formatMoney(
-                                task.cost,
-                                task.currency,
-                              ),
+                              settings.formatMoney(task.cost, task.currency),
                               style: const TextStyle(
                                 color: CupertinoColors.systemGreen,
                               ),
@@ -289,7 +293,7 @@ class _TaskCardState extends State<TaskCard> {
                       children: [
                         buildTypeTag(task.type),
                         buildPaymentTag(context, task),
-                        ..._buildAssigneeChips(context, task),
+                        _TaskAssigneeChips(task: task),
                       ],
                     ),
                   ],
@@ -302,55 +306,13 @@ class _TaskCardState extends State<TaskCard> {
     );
   }
 
-  List<Widget> _buildAssigneeChips(BuildContext context, ProjectTask task) {
-    final assignees = context.watch<ProjectProvider>().assigneesFor(task);
-    if (assignees.isEmpty) return const [];
-    final visible = assignees.take(3).toList();
-    final overflow = assignees.length - visible.length;
-    return [
-      const SizedBox(width: 6),
-      ...visible.map((m) {
-        final color = Color(m.color);
-        return Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: Container(
-            width: 22,
-            height: 22,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(color: color.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              m.initials,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-          ),
-        );
-      }),
-      if (overflow > 0)
-        Text(
-          '+$overflow',
-          style: const TextStyle(
-            fontSize: 11,
-            color: CupertinoColors.systemGrey,
-          ),
-        ),
-    ];
-  }
-
   Widget buildPaymentTag(BuildContext context, ProjectTask task) {
-    return Consumer<WalletProvider>(
-      builder: (context, walletProvider, _) {
-        final paymentMethod = walletProvider.paymentMethods
-            .where((m) => m.id == task.paymentMethodId)
-            .firstOrNull;
-
+    return Selector<WalletProvider, String?>(
+      selector: (_, walletProvider) => walletProvider.paymentMethods
+          .where((m) => m.id == task.paymentMethodId)
+          .firstOrNull
+          ?.name,
+      builder: (context, paymentName, _) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -374,7 +336,7 @@ class _TaskCardState extends State<TaskCard> {
               const SizedBox(width: 4),
               Text(
                 task.isPaid
-                    ? (paymentMethod?.name ?? 'paid'.tr())
+                    ? (paymentName ?? 'paid'.tr())
                     : 'unpaid'.tr(),
                 style: TextStyle(
                   fontSize: 10,
@@ -405,6 +367,60 @@ Widget buildTypeTag(String type) {
   );
 }
 
+/// Assignee avatar chips for a task. Isolated into its own widget so a member
+/// change rebuilds only these chips instead of the entire task card.
+class _TaskAssigneeChips extends StatelessWidget {
+  const _TaskAssigneeChips({required this.task});
+
+  final ProjectTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final assignees = context.watch<ProjectProvider>().assigneesFor(task);
+    if (assignees.isEmpty) return const SizedBox.shrink();
+    final visible = assignees.take(3).toList();
+    final overflow = assignees.length - visible.length;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(width: 6),
+        ...visible.map((m) {
+          final color = Color(m.color);
+          return Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.5)),
+              ),
+              child: Text(
+                m.initials,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          );
+        }),
+        if (overflow > 0)
+          Text(
+            '+$overflow',
+            style: const TextStyle(
+              fontSize: 11,
+              color: CupertinoColors.systemGrey,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// Elapsed-time chip for a task. Runs its own one-second ticker so only this
 /// chip rebuilds per tick — the surrounding card stays static, which matters
 /// on desktop where many cards can be visible at once.
@@ -418,42 +434,44 @@ class _LiveTimerChip extends StatefulWidget {
 }
 
 class _LiveTimerChipState extends State<_LiveTimerChip> {
-  Timer? _ticker;
+  bool _attached = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.task.isTimerRunning) _startTicker();
+    _sync();
   }
 
   @override
   void didUpdateWidget(_LiveTimerChip oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.task.isTimerRunning != oldWidget.task.isTimerRunning) {
-      if (widget.task.isTimerRunning) {
-        _startTicker();
-      } else {
-        _stopTicker();
-      }
-    }
+    if (widget.task.isTimerRunning != oldWidget.task.isTimerRunning) _sync();
   }
 
   @override
   void dispose() {
-    _stopTicker();
+    _detach();
     super.dispose();
   }
 
-  void _startTicker() {
-    _stopTicker();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
+  /// Attaches to the shared one-second ticker only while this task's timer is
+  /// running. The ticker stops itself once the last chip detaches — on pause,
+  /// completion, archive, deletion, or when the card leaves the viewport.
+  void _sync() {
+    if (widget.task.isTimerRunning) {
+      if (!_attached) {
+        _attached = true;
+        TimerTicker.instance.acquire();
+      }
+    } else {
+      _detach();
+    }
   }
 
-  void _stopTicker() {
-    _ticker?.cancel();
-    _ticker = null;
+  void _detach() {
+    if (!_attached) return;
+    _attached = false;
+    TimerTicker.instance.release();
   }
 
   String _formatDuration(int seconds) {
@@ -476,6 +494,16 @@ class _LiveTimerChipState extends State<_LiveTimerChip> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
+    // Only running-timer chips listen to the shared ticker, so a static chip
+    // never rebuilds while some other task's timer is ticking.
+    if (!task.isTimerRunning) return _buildChip(context, task);
+    return ValueListenableBuilder<int>(
+      valueListenable: TimerTicker.instance.tick,
+      builder: (context, _, _) => _buildChip(context, task),
+    );
+  }
+
+  Widget _buildChip(BuildContext context, ProjectTask task) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(

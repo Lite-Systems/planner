@@ -37,7 +37,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 21,
+      version: 22,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -197,6 +197,31 @@ CREATE TABLE incomes (
   FOREIGN KEY (taskId) REFERENCES tasks (id) ON DELETE SET NULL
 )
 ''');
+
+    await _createIndexes(db);
+  }
+
+  /// Indexes backing the foreign-key lookups and the common filter/sort
+  /// columns. Created both on fresh installs ([_createDB]) and on upgrade to
+  /// v22 ([_onUpgrade]) — `IF NOT EXISTS` keeps both paths idempotent.
+  Future<void> _createIndexes(Database db) async {
+    const statements = <String>[
+      'CREATE INDEX IF NOT EXISTS idx_tasks_projectId ON tasks(projectId)',
+      'CREATE INDEX IF NOT EXISTS idx_tasks_paymentMethodId ON tasks(paymentMethodId)',
+      'CREATE INDEX IF NOT EXISTS idx_project_members_projectId ON project_members(projectId)',
+      'CREATE INDEX IF NOT EXISTS idx_task_assignees_memberId ON task_assignees(memberId)',
+      'CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)',
+      'CREATE INDEX IF NOT EXISTS idx_expenses_categoryId ON expenses(categoryId)',
+      'CREATE INDEX IF NOT EXISTS idx_expenses_paymentMethodId ON expenses(paymentMethodId)',
+      'CREATE INDEX IF NOT EXISTS idx_expenses_taskId ON expenses(taskId)',
+      'CREATE INDEX IF NOT EXISTS idx_incomes_date ON incomes(date)',
+      'CREATE INDEX IF NOT EXISTS idx_incomes_categoryId ON incomes(categoryId)',
+      'CREATE INDEX IF NOT EXISTS idx_incomes_paymentMethodId ON incomes(paymentMethodId)',
+      'CREATE INDEX IF NOT EXISTS idx_incomes_taskId ON incomes(taskId)',
+    ];
+    for (final sql in statements) {
+      await db.execute(sql);
+    }
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -515,6 +540,14 @@ CREATE TABLE tasks (
         await db.execute('ALTER TABLE projects ADD COLUMN icon INTEGER');
       } catch (e) {
         log('Migration Error v21 project cover/customer: $e');
+      }
+    }
+
+    if (oldVersion < 22) {
+      try {
+        await _createIndexes(db);
+      } catch (e) {
+        log('Migration Error v22 indexes: $e');
       }
     }
   }
@@ -849,6 +882,48 @@ CREATE TABLE tasks (
     return (Sqflite.firstIntValue(expenses) ?? 0) +
         (Sqflite.firstIntValue(tasks) ?? 0) +
         (Sqflite.firstIntValue(incomes) ?? 0);
+  }
+
+  /// Income and expense totals grouped by payment method **and** currency.
+  ///
+  /// Each row is `{paymentMethodId, currency, incomeTotal, expenseTotal}`.
+  /// Wallet balances combine these grouped rows in Dart so only the handful of
+  /// currency buckets are converted, never every transaction.
+  Future<List<Map<String, Object?>>> getWalletFlowTotals() async {
+    final db = await instance.database;
+    return db.rawQuery('''
+      SELECT paymentMethodId,
+             COALESCE(currency, 'EGP') AS currency,
+             SUM(CASE WHEN kind = 'income' THEN amount ELSE 0 END) AS incomeTotal,
+             SUM(CASE WHEN kind = 'expense' THEN amount ELSE 0 END) AS expenseTotal
+      FROM (
+        SELECT paymentMethodId, currency, amount, 'income' AS kind FROM incomes
+        UNION ALL
+        SELECT paymentMethodId, currency, amount, 'expense' AS kind FROM expenses
+      )
+      GROUP BY paymentMethodId, COALESCE(currency, 'EGP')
+    ''');
+  }
+
+  /// Per-project task counts and money totals for non-archived tasks.
+  ///
+  /// Each row is `{projectId, total, completed, pending, inProgress,
+  /// totalEarnings, paidEarnings}`. Mirrors the semantics of the previous
+  /// in-Dart aggregations (archived tasks excluded; completed == `isCompleted`).
+  Future<List<Map<String, Object?>>> getProjectTaskAggregates() async {
+    final db = await instance.database;
+    return db.rawQuery('''
+      SELECT projectId,
+             COUNT(*) AS total,
+             SUM(CASE WHEN isCompleted = 1 THEN 1 ELSE 0 END) AS completed,
+             SUM(CASE WHEN status = 'toDo' THEN 1 ELSE 0 END) AS pending,
+             SUM(CASE WHEN status = 'inProgress' THEN 1 ELSE 0 END) AS inProgress,
+             SUM(cost) AS totalEarnings,
+             SUM(CASE WHEN isPaid = 1 THEN cost ELSE 0 END) AS paidEarnings
+      FROM tasks
+      WHERE isArchived = 0
+      GROUP BY projectId
+    ''');
   }
 
   Future<int> insertIncomeCategory(IncomeCategory category) async {

@@ -4,8 +4,6 @@ import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/utils/icon_utils.dart';
 
-import '../../providers/expenses_provider.dart';
-import '../../providers/income_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/wallet_provider.dart';
 import '../../models/payment_method.dart';
@@ -32,25 +30,12 @@ class PaymentMethodsScreen extends StatelessWidget {
                   context,
                   listen: false,
                 );
-                final incomes = Provider.of<IncomeProvider>(
-                  context,
-                  listen: false,
-                ).incomes;
-                final expenses = Provider.of<ExpensesProvider>(
-                  context,
-                  listen: false,
-                ).expenses;
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 80),
                   itemCount: provider.paymentMethods.length,
                   itemBuilder: (context, index) {
                     final method = provider.paymentMethods[index];
-                    final balance = provider.balanceFor(
-                      method,
-                      incomes: incomes,
-                      expenses: expenses,
-                      settings: settings,
-                    );
+                    final balance = provider.balanceFor(method, settings: settings);
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -273,7 +258,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
           left: 16,
           right: 16,
           top: 16,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 16,
         ),
         child: SingleChildScrollView(
           child: Column(

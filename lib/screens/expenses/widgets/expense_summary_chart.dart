@@ -189,6 +189,10 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
     List<MapEntry<String, double>> entries,
     bool isDark,
   ) {
+    // Rebuild the chart only when hide-amounts changes, not on unrelated
+    // settings churn (e.g. the twice-per-refresh isFetchingRates flag).
+    context.select<SettingsProvider, bool>((s) => s.hideAmounts);
+    final settings = context.read<SettingsProvider>();
     final bool hasTouched =
         _touchedIndex >= 0 && _touchedIndex < entries.length;
     final entry = hasTouched ? entries[_touchedIndex] : null;
@@ -237,10 +241,7 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  context.watch<SettingsProvider>().formatMoney(
-                    entry!.value,
-                    widget.currency,
-                  ),
+                  settings.formatMoney(entry!.value, widget.currency),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -271,9 +272,7 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  context.watch<SettingsProvider>().hideAmounts
-                      ? ''
-                      : widget.currency,
+                  settings.hideAmounts ? '' : widget.currency,
                   style: TextStyle(
                     fontSize: 11,
                     color: isDark
@@ -282,10 +281,7 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                   ),
                 ),
                 Text(
-                  context.watch<SettingsProvider>().formatMoney(
-                    widget.total,
-                    widget.currency,
-                  ),
+                  settings.formatMoney(widget.total, widget.currency),
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -310,6 +306,8 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
   // ── Legend ─────────────────────────────────────────────────────────────────
 
   Widget _buildLegend(List<MapEntry<String, double>> entries, bool isDark) {
+    context.select<SettingsProvider, bool>((s) => s.hideAmounts);
+    final settings = context.read<SettingsProvider>();
     return Column(
       children: List.generate(entries.length, (i) {
         final entry = entries[i];
@@ -387,12 +385,10 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                               Row(
                                 children: [
                                   Text(
-                                    context
-                                        .watch<SettingsProvider>()
-                                        .formatMoney(
-                                          entry.value,
-                                          widget.currency,
-                                        ),
+                                    settings.formatMoney(
+                                      entry.value,
+                                      widget.currency,
+                                    ),
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.bold,

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:planner/core/utils/app_layout.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:planner/models/project_task.dart';
 import 'package:planner/providers/project_provider.dart';
 import 'package:planner/providers/settings_provider.dart';
@@ -26,7 +27,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   final detailsController = TextEditingController(text: '');
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _speechInitialized = false;
-  String? _listeningFieldName;
+  final ValueNotifier<String?> _listeningFieldNotifier = ValueNotifier<String?>(
+    null,
+  );
+  String? get _listeningFieldName => _listeningFieldNotifier.value;
   final costController = TextEditingController(text: '');
   final estimatedTimeController = TextEditingController(text: '');
   final hourlyRateController = TextEditingController(text: '');
@@ -134,6 +138,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   void dispose() {
     _speech.stop();
+    _listeningFieldNotifier.dispose();
     estimatedTimeController.removeListener(_updateCost);
     hourlyRateController.removeListener(_updateCost);
     hoursController.removeListener(_updateCost);
@@ -152,27 +157,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Future<void> _toggleFieldSpeech(
     TextEditingController controller,
     String fieldName,
-    StateSetter? dialogSetState,
   ) async {
     final lang = context.locale.languageCode;
-    void updateState() {
-      if (mounted) {
-        setState(() {});
-        if (dialogSetState != null) {
-          dialogSetState(() {});
-        }
-      }
-    }
 
     if (_listeningFieldName == fieldName) {
       await _speech.stop();
-      _listeningFieldName = null;
-      updateState();
+      _listeningFieldNotifier.value = null;
       return;
     }
 
     if (_listeningFieldName != null) {
       await _speech.stop();
+      _listeningFieldNotifier.value = null;
     }
 
     if (!_speechInitialized) {
@@ -180,15 +176,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         _speechInitialized = await _speech.initialize(
           onStatus: (status) {
             if (status == 'done' || status == 'notListening') {
-              if (_listeningFieldName == fieldName) {
-                _listeningFieldName = null;
-                updateState();
+              if (mounted && _listeningFieldName == fieldName) {
+                _listeningFieldNotifier.value = null;
               }
             }
           },
           onError: (_) {
-            _listeningFieldName = null;
-            updateState();
+            _listeningFieldNotifier.value = null;
           },
         );
       } catch (_) {
@@ -198,8 +192,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
     if (!_speechInitialized) return;
 
-    _listeningFieldName = fieldName;
-    updateState();
+    _listeningFieldNotifier.value = fieldName;
 
     final localeId = lang == 'ar' ? 'ar-EG' : 'en-US';
 
@@ -207,7 +200,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       onResult: (result) {
         if (result.recognizedWords.isNotEmpty) {
           controller.text = result.recognizedWords;
-          updateState();
         }
       },
       listenOptions: stt.SpeechListenOptions(
@@ -221,31 +213,34 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Widget _buildMicSuffix(
     TextEditingController controller,
     String fieldName,
-    StateSetter? dialogSetState,
   ) {
-    final isListening = _listeningFieldName == fieldName;
-    return CupertinoButton(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      minimumSize: const Size(36, 36),
-      onPressed: () =>
-          _toggleFieldSpeech(controller, fieldName, dialogSetState),
-      child: isListening
-          ? const Icon(
-                  CupertinoIcons.mic_fill,
-                  color: CupertinoColors.destructiveRed,
+    return ValueListenableBuilder<String?>(
+      valueListenable: _listeningFieldNotifier,
+      builder: (context, listeningField, _) {
+        final isListening = listeningField == fieldName;
+        return CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          minimumSize: const Size(36, 36),
+          onPressed: () => _toggleFieldSpeech(controller, fieldName),
+          child: isListening
+              ? const Icon(
+                      CupertinoIcons.mic_fill,
+                      color: CupertinoColors.destructiveRed,
+                      size: 18,
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(
+                      duration: 400.ms,
+                      begin: const Offset(0.85, 0.85),
+                      end: const Offset(1.15, 1.15),
+                    )
+              : const Icon(
+                  CupertinoIcons.mic,
+                  color: CupertinoColors.systemGrey2,
                   size: 18,
-                )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
-                  duration: 400.ms,
-                  begin: const Offset(0.85, 0.85),
-                  end: const Offset(1.15, 1.15),
-                )
-          : const Icon(
-              CupertinoIcons.mic,
-              color: CupertinoColors.systemGrey2,
-              size: 18,
-            ),
+                ),
+        );
+      },
     );
   }
 
@@ -388,32 +383,33 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         child: StatefulBuilder(
           builder: (context, setState) => AppLayout.constrain(
             ListView(
-              padding: const EdgeInsets.all(16),
-              shrinkWrap: true,
+              padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                CupertinoTextField(
-                  controller: nameController,
-                  placeholder: _listeningFieldName == 'name'
-                      ? 'listening'.tr()
-                      : 'taskName'.tr(),
-                  padding: const EdgeInsets.all(12),
-                  suffix: _buildMicSuffix(nameController, 'name', setState),
-                ),
-                const SizedBox(height: 16),
-                CupertinoTextField(
-                  controller: detailsController,
-                  placeholder: _listeningFieldName == 'details'
-                      ? 'listening'.tr()
-                      : 'details'.tr(),
-                  padding: const EdgeInsets.all(12),
-                  maxLines: 3,
-                  suffix: _buildMicSuffix(
-                    detailsController,
-                    'details',
-                    setState,
+                ValueListenableBuilder<String?>(
+                  valueListenable: _listeningFieldNotifier,
+                  builder: (context, listeningField, _) => CupertinoTextField(
+                    controller: nameController,
+                    placeholder: listeningField == 'name'
+                        ? 'listening'.tr()
+                        : 'taskName'.tr(),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    suffix: _buildMicSuffix(nameController, 'name'),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
+                ValueListenableBuilder<String?>(
+                  valueListenable: _listeningFieldNotifier,
+                  builder: (context, listeningField, _) => CupertinoTextField(
+                    controller: detailsController,
+                    placeholder: listeningField == 'details'
+                        ? 'listening'.tr()
+                        : 'details'.tr(),
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    maxLines: 3,
+                    suffix: _buildMicSuffix(detailsController, 'details'),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
@@ -423,15 +419,15 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         prefix: Padding(
-                          padding: const EdgeInsets.only(left: 8, right: 8),
+                          padding: const EdgeInsets.only(left: AppSpacing.sm, right: AppSpacing.sm),
                           child: Text(_currency),
                         ),
                       ),
                     ),
 
-                    SizedBox(width: 12),
+                    SizedBox(width: AppSpacing.md),
                     GestureDetector(
                       onTap: () => showCupertinoModalPopup(
                         context: context,
@@ -455,9 +451,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ),
                       ),
                       child: Container(
-                        margin: const EdgeInsets.only(left: 8),
+                        margin: const EdgeInsets.only(left: AppSpacing.sm),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -473,7 +469,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Estimated Time Input
                 CupertinoTextField(
                   controller: estimatedTimeController,
@@ -481,16 +477,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   suffix: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     child: Text(
                       'hours'.tr(),
                       style: TextStyle(color: CupertinoColors.systemGrey),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Hourly Rate Input
                 CupertinoTextField(
                   controller: hourlyRateController,
@@ -498,16 +494,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   suffix: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
                     child: Text(
                       '/ ${'hours'.tr()}',
                       style: TextStyle(color: CupertinoColors.systemGrey),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Manual Time Spent Entry
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,7 +515,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         color: CupertinoColors.systemGrey,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
                         Expanded(
@@ -527,7 +523,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             controller: hoursController,
                             placeholder: 'hours'.tr(),
                             keyboardType: TextInputType.number,
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             suffix: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8.0,
@@ -541,13 +537,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: CupertinoTextField(
                             controller: minutesController,
                             placeholder: 'minutes'.tr(),
                             keyboardType: TextInputType.number,
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             suffix: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8.0,
@@ -564,7 +560,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       ],
                     ),
                     if (widget.task?.timerStartAt != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Row(
@@ -587,7 +583,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ),
                       ),
                       if (widget.task?.timerEndAt != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppSpacing.xs),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 2),
                           child: Row(
@@ -614,9 +610,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   ],
                 ),
                 if (_expectedCost > 0) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                     child: Row(
                       children: [
                         Text(
@@ -638,13 +634,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Start Date Picker
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     color: CupertinoColors.systemGrey6,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -665,9 +661,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               height: 216,
                               padding: const EdgeInsets.only(top: 6.0),
                               margin: EdgeInsets.only(
-                                bottom: MediaQuery.of(
+                                bottom: MediaQuery.viewInsetsOf(
                                   context,
-                                ).viewInsets.bottom,
+                                ).bottom,
                               ),
                               color: CupertinoColors.systemBackground
                                   .resolveFrom(context),
@@ -691,13 +687,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // End Date Picker
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     color: CupertinoColors.systemGrey6,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -720,9 +716,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               height: 216,
                               padding: const EdgeInsets.only(top: 6.0),
                               margin: EdgeInsets.only(
-                                bottom: MediaQuery.of(
+                                bottom: MediaQuery.viewInsetsOf(
                                   context,
-                                ).viewInsets.bottom,
+                                ).bottom,
                               ),
                               color: CupertinoColors.systemBackground
                                   .resolveFrom(context),
@@ -747,9 +743,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text('status'.tr()),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 CupertinoSegmentedControl<String>(
                   groupValue: status,
                   children: statusMap.map(
@@ -767,9 +763,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     });
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text('type'.tr()),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 CupertinoSegmentedControl<String>(
                   groupValue: type,
                   children: typeMap.map(
@@ -787,9 +783,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     });
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 Text('assignees'.tr()),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Consumer<ProjectProvider>(
                   builder: (context, projectProvider, _) {
                     final members = projectProvider.getMembers(
@@ -829,7 +825,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               color: selected
                                   ? color.withValues(alpha: 0.2)
                                   : CupertinoColors.systemGrey6,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(AppRadius.xl),
                               border: Border.all(
                                 color: selected
                                     ? color
@@ -874,13 +870,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Payment Section
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     color: CupertinoColors.systemGrey6,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Column(
                     children: [
@@ -900,7 +896,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       ),
                       if (isPaid) ...[
                         const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                           child: Divider(height: 1),
                         ),
                         Consumer<WalletProvider>(
@@ -958,13 +954,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
                 // Todo List Section
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
                     color: CupertinoColors.systemGrey6,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -993,7 +989,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                   });
                                 },
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: AppSpacing.lg),
                               CupertinoButton(
                                 padding: EdgeInsets.zero,
                                 child: const FaIcon(
@@ -1016,30 +1012,30 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           ),
                         ],
                       ),
-                      CupertinoTextField(
-                        controller: todoController,
-                        placeholder: _listeningFieldName == 'todo'
-                            ? 'listening'.tr()
-                            : 'todoPlaceholder'.tr(),
-                        padding: const EdgeInsets.all(10),
-                        suffix: _buildMicSuffix(
-                          todoController,
-                          'todo',
-                          setState,
+                      ValueListenableBuilder<String?>(
+                        valueListenable: _listeningFieldNotifier,
+                        builder: (context, listeningField, _) =>
+                            CupertinoTextField(
+                          controller: todoController,
+                          placeholder: listeningField == 'todo'
+                              ? 'listening'.tr()
+                              : 'todoPlaceholder'.tr(),
+                          padding: const EdgeInsets.all(10),
+                          suffix: _buildMicSuffix(todoController, 'todo'),
+                          onSubmitted: (value) {
+                            if (value.isNotEmpty) {
+                              setState(() {
+                                subTasks.add({'title': value, 'isDone': false});
+                                todoController.clear();
+                              });
+                            }
+                          },
                         ),
-                        onSubmitted: (value) {
-                          if (value.isNotEmpty) {
-                            setState(() {
-                              subTasks.add({'title': value, 'isDone': false});
-                              todoController.clear();
-                            });
-                          }
-                        },
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       if (subTasks.isEmpty)
                         Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: const EdgeInsets.all(AppSpacing.lg),
                           child: Center(
                             child: Text(
                               'noTasksYet'.tr(),
@@ -1101,7 +1097,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                           size: 20,
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: AppSpacing.sm),
                                       Expanded(
                                         child: Text(
                                           todo['title'],
@@ -1131,7 +1127,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                       ReorderableDragStartListener(
                                         index: index,
                                         child: Container(
-                                          padding: EdgeInsets.only(left: 8),
+                                          padding: EdgeInsets.only(left: AppSpacing.sm),
                                           child: const FaIcon(
                                             FontAwesomeIcons.gripLines,
                                             color: CupertinoColors.systemGrey,
@@ -1149,7 +1145,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),

@@ -30,8 +30,11 @@ class _UsdRateWidgetState extends State<UsdRateWidget> {
   Widget build(BuildContext context) {
     final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
 
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
+    return Selector<SettingsProvider, (double, double, bool, String)>(
+      selector: (_, s) =>
+          (s.usdToEgp, s.usdToSar, s.isFetchingRates, s.lastRatesUpdate),
+      builder: (context, _, _) {
+        final settings = context.read<SettingsProvider>();
         final card = Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

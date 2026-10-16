@@ -69,29 +69,27 @@ class TaskArchiveScreen extends StatelessWidget {
             for (final task in archived) {
               grouped.putIfAbsent(task.projectId, () => []).add(task);
             }
+            final groups = grouped.entries.toList();
 
-            return ListView(
+            return ListView.builder(
               padding: const EdgeInsets.only(bottom: 24),
-              children: [
-                for (final entry in grouped.entries)
-                  _ProjectArchiveSection(
-                    project:
-                        projects.projects
-                            .where((p) => p.id == entry.key)
-                            .firstOrNull ??
-                        Project(
-                          id: entry.key,
-                          name: entry.key,
-                          description: '',
-                        ),
-                    tasks: entry.value,
-                    settings: settings,
-                    onPrint: (project, tasks) =>
-                        _print(context, project, tasks, share: false),
-                    onShare: (project, tasks) =>
-                        _print(context, project, tasks, share: true),
-                  ),
-              ],
+              itemCount: groups.length,
+              itemBuilder: (context, i) {
+                final entry = groups[i];
+                return _ProjectArchiveSection(
+                  project:
+                      projects.projects
+                          .where((p) => p.id == entry.key)
+                          .firstOrNull ??
+                      Project(id: entry.key, name: entry.key, description: ''),
+                  tasks: entry.value,
+                  settings: settings,
+                  onPrint: (project, tasks) =>
+                      _print(context, project, tasks, share: false),
+                  onShare: (project, tasks) =>
+                      _print(context, project, tasks, share: true),
+                );
+              },
             );
           },
         ),

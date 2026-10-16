@@ -279,17 +279,10 @@ class _WalletTotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer4<WalletProvider, IncomeProvider, ExpensesProvider,
-        SettingsProvider>(
-      builder: (_, wallet, income, expenses, settings, _) {
+    return Consumer2<WalletProvider, SettingsProvider>(
+      builder: (_, wallet, settings, _) {
         final walletTotal = wallet.paymentMethods.fold<double>(0, (sum, m) {
-          return sum +
-              wallet.balanceFor(
-                m,
-                incomes: income.incomes,
-                expenses: expenses.expenses,
-                settings: settings,
-              );
+          return sum + wallet.balanceFor(m, settings: settings);
         });
         return _SummaryCard(
           data: _SummaryCardData(

@@ -219,17 +219,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWalletStrip(BuildContext context, AppLayout layout) {
-    return Consumer3<WalletProvider, IncomeProvider, ExpensesProvider>(
-      builder: (_, wallet, income, expenses, _) {
+    return Consumer<WalletProvider>(
+      builder: (_, wallet, _) {
         if (wallet.paymentMethods.isEmpty) return const SizedBox.shrink();
         final settings = Provider.of<SettingsProvider>(context, listen: false);
         final chips = wallet.paymentMethods.map((method) {
-          final balance = wallet.balanceFor(
-            method,
-            incomes: income.incomes,
-            expenses: expenses.expenses,
-            settings: settings,
-          );
+          final balance = wallet.balanceFor(method, settings: settings);
           return Container(
             width: 180,
             margin: EdgeInsets.only(
@@ -583,9 +578,11 @@ class _ActiveTimersSection extends StatelessWidget {
                   break;
                 }
               }
-              return TaskCard(
-                task: task,
-                onTap: project == null ? null : () => onOpenProject(project!),
+              return RepaintBoundary(
+                child: TaskCard(
+                  task: task,
+                  onTap: project == null ? null : () => onOpenProject(project!),
+                ),
               );
             }),
           ],

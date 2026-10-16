@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:planner/core/utils/no_animation_route.dart';
 
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../providers/project_provider.dart';
 import '../../../models/project.dart';
+import '../../../models/project_member.dart';
 
 import 'add_task_screen.dart';
 import '../widgets/task_card.dart';
@@ -67,6 +69,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     ).loadTasks(widget.project.id);
   }
 
+  bool _isGeneratingPdf = false;
+
+  /// Shows/dismisses the modal spinner while the PDF is being rendered on the
+  /// background isolate. Dismissed before the print/share UI appears.
+  void _setGenerating(bool active) {
+    if (!mounted || active == _isGeneratingPdf) return;
+    _isGeneratingPdf = active;
+    if (active) {
+      showCupertinoDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const CupertinoAlertDialog(
+          content: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CupertinoActivityIndicator()),
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+  }
+
   Future<void> _generatePdf(List<ProjectTask> tasks) async {
     final pdfService = PdfService();
     final settingsProvider = Provider.of<SettingsProvider>(
@@ -82,6 +107,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       showTaskType: settingsProvider.showTaskTypeInPrint,
       showTaskTime: settingsProvider.showTaskTimeInPrint,
       showSubtasks: settingsProvider.showSubtasksInPrint,
+      onGenerating: _setGenerating,
     );
   }
 
@@ -104,6 +130,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       showTaskTime: settingsProvider.showTaskTimeInPrint,
       showSubtasks: settingsProvider.showSubtasksInPrint,
       sharePositionOrigin: sharePositionOrigin,
+      onGenerating: _setGenerating,
     );
   }
 
@@ -210,15 +237,20 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     });
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(List<ProjectMember> members) {
     return Column(
       children: [
         Align(
           alignment: AlignmentDirectional.centerEnd,
           child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 4),
+            padding: const EdgeInsetsDirectional.fromSTEB(
+              AppSpacing.lg,
+              AppSpacing.sm,
+              AppSpacing.lg,
+              AppSpacing.xs,
+            ),
             child: CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               onPressed: () =>
                   setState(() => _filtersExpanded = !_filtersExpanded),
               child: Row(
@@ -231,7 +263,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     size: 14,
                   ),
                   const SizedBox(width: 6),
-                  Text('filterProjects'.tr()),
+                  Text('filterProjects'.tr(), style: AppText.caption(context)),
                   if (_hasFilters) ...[
                     const SizedBox(width: 6),
                     Container(
@@ -241,15 +273,13 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: Text(
                         _activeFilterCount.toString(),
-                        style: const TextStyle(
-                          color: CupertinoColors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: AppText.caption(
+                          context,
+                        ).copyWith(color: CupertinoColors.white, fontSize: 11),
                       ),
                     ),
                   ],
@@ -263,23 +293,25 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           crossFadeState: _filtersExpanded
               ? CrossFadeState.showFirst
               : CrossFadeState.showSecond,
-          firstChild: _buildFilterPanel(),
+          firstChild: _buildFilterPanel(members),
           secondChild: const SizedBox.shrink(),
         ),
       ],
     );
   }
 
-  Widget _buildFilterPanel() {
-    final members = context.watch<ProjectProvider>().getMembers(
-      widget.project.id,
-    );
+  Widget _buildFilterPanel(List<ProjectMember> members) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      margin: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        0,
+        AppSpacing.lg,
+        AppSpacing.sm,
+      ),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.elevatedBackground(context),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.separator(context)),
       ),
       child: Column(
@@ -287,7 +319,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Row(
               children: [
                 _buildFilterChip(
@@ -313,10 +345,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             child: Row(
               children: [
                 _buildFilterChip(
@@ -339,10 +371,10 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             ),
           ),
           if (members.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
               child: Row(
                 children: [
                   _buildFilterChip(
@@ -365,7 +397,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: CupertinoButton(
-                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  0,
+                ),
                 onPressed: _clearFilters,
                 child: Text('clearFilters'.tr()),
               ),
@@ -380,24 +417,29 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppClickable(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.only(right: AppSpacing.sm),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? CupertinoColors.activeBlue
-              : CupertinoColors.systemGrey6,
-          borderRadius: BorderRadius.circular(20),
+              : AppColors.elevatedBackground(context),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            color: isSelected ? CupertinoColors.white : CupertinoColors.label,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-          ),
+          style: isSelected
+              ? AppText.caption(
+                  context,
+                ).copyWith(color: CupertinoColors.white, fontWeight: FontWeight.w600)
+              : AppText.caption(
+                  context,
+                ).copyWith(color: CupertinoColors.label, fontSize: 13),
         ),
       ),
     );
@@ -573,19 +615,21 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     if (project.customer != null &&
                         project.customer!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.sm,
+                          AppSpacing.lg,
+                          0,
+                        ),
                         child: Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
                             project.customer!,
-                            style: const TextStyle(
-                              color: CupertinoColors.secondaryLabel,
-                              fontSize: 13,
-                            ),
+                            style: AppText.bodySecondary(context),
                           ),
                         ),
                       ),
-                    _buildFilters(),
+                    _buildFilters(provider.getMembers(widget.project.id)),
                     Expanded(
                       child: Consumer<ProjectProvider>(
                         builder: (_, provider, child) {
@@ -655,7 +699,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -681,7 +730,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.md),
                           CupertinoButton(
                             padding: EdgeInsets.zero,
                             onPressed: () {
@@ -694,27 +743,26 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                                horizontal: AppSpacing.lg,
+                                vertical: AppSpacing.md,
                               ),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [
                                     Color(0xFF8B5CF6),
-                                    Color(0xFFEC4899),
+                                    AppColors.expensePrimary,
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFFEC4899)
-                                        .withValues(alpha: 0.25),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
+                                boxShadow: AppShadows.hero(
+                                  context,
+                                  AppColors.expensePrimary,
+                                  alpha: 0.25,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -727,7 +775,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   const SizedBox(width: 6),
                                   Text(
                                     'voiceCreate'.tr(),
-                                    style: const TextStyle(
+                                    style: AppText.body(
+                                      context,
+                                    ).copyWith(
                                       color: CupertinoColors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,

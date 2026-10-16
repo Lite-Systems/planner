@@ -1,14 +1,18 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
-import '../models/expense.dart';
-import '../models/income.dart';
 import '../models/payment_method.dart';
 import '../core/services/database_helper.dart';
+import '../core/utils/currency_helper.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'settings_provider.dart';
 
 class WalletProvider with ChangeNotifier {
   List<PaymentMethod> _paymentMethods = [];
+
+  /// Income/expense totals grouped by payment method **and** currency, cached
+  /// from SQL (see [refreshFlowTotals]). Balances are then combined in Dart so
+  /// only the few currency buckets are converted, never every transaction.
+  final Map<String, List<_WalletFlow>> _flows = {};
 
   List<PaymentMethod> get paymentMethods => _paymentMethods;
 
@@ -43,10 +47,45 @@ class WalletProvider with ChangeNotifier {
           ),
         ); // payment
       }
+
+      await _loadFlowTotals();
     } catch (e) {
       log('WalletProvider loadData error: $e');
     } finally {
       notifyListeners();
+    }
+  }
+
+  /// Recomputes the cached income/expense flow totals and notifies listeners.
+  /// Wired to [IncomeProvider]/[ExpensesProvider] so a transaction change
+  /// refreshes every wallet balance with a single grouped query.
+  Future<void> refreshFlowTotals() async {
+    await _loadFlowTotals();
+    notifyListeners();
+  }
+
+  Future<void> _loadFlowTotals() async {
+    try {
+      final rows = await DatabaseHelper.instance.getWalletFlowTotals();
+      final next = <String, List<_WalletFlow>>{};
+      for (final row in rows) {
+        final id = row['paymentMethodId'] as String?;
+        if (id == null) continue;
+        next
+            .putIfAbsent(id, () => [])
+            .add(
+              _WalletFlow(
+                currency: (row['currency'] as String?) ?? CurrencyHelper.egp,
+                income: (row['incomeTotal'] as num?)?.toDouble() ?? 0,
+                expense: (row['expenseTotal'] as num?)?.toDouble() ?? 0,
+              ),
+            );
+      }
+      _flows
+        ..clear()
+        ..addAll(next);
+    } catch (e) {
+      log('WalletProvider _loadFlowTotals error: $e');
     }
   }
 
@@ -76,21 +115,25 @@ class WalletProvider with ChangeNotifier {
 
   double balanceFor(
     PaymentMethod method, {
-    required List<Income> incomes,
-    required List<Expense> expenses,
     required SettingsProvider settings,
   }) {
     double total = settings.convert(method.startingBalance, settings.currency);
-    for (final income in incomes) {
-      if (income.paymentMethodId == method.id) {
-        total += settings.convert(income.amount, income.currency);
-      }
-    }
-    for (final expense in expenses) {
-      if (expense.paymentMethodId == method.id) {
-        total -= settings.convert(expense.amount, expense.currency);
-      }
+    for (final flow in _flows[method.id] ?? const <_WalletFlow>[]) {
+      total += settings.convert(flow.income, flow.currency);
+      total -= settings.convert(flow.expense, flow.currency);
     }
     return total;
   }
+}
+
+class _WalletFlow {
+  const _WalletFlow({
+    required this.currency,
+    required this.income,
+    required this.expense,
+  });
+
+  final String currency;
+  final double income;
+  final double expense;
 }

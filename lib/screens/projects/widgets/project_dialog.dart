@@ -126,6 +126,11 @@ class ProjectDialog {
                       final picker = ImagePicker();
                       final pickedFile = await picker.pickImage(
                         source: ImageSource.gallery,
+                        // Downscale/compress on pick so covers don't ship
+                        // multi-megapixel originals into the documents dir.
+                        maxWidth: 1600,
+                        maxHeight: 1600,
+                        imageQuality: 85,
                       );
                       if (pickedFile != null) {
                         setState(() => imagePath = pickedFile.path);
@@ -184,9 +189,21 @@ class _ImagePickerBox extends StatelessWidget {
           border: Border.all(color: CupertinoColors.systemGrey4),
         ),
         child: imagePath != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(File(imagePath!), fit: BoxFit.cover),
+            ? LayoutBuilder(
+                builder: (context, constraints) {
+                  final dpr = MediaQuery.devicePixelRatioOf(context);
+                  final cacheWidth = constraints.maxWidth.isFinite
+                      ? (constraints.maxWidth * dpr).round()
+                      : null;
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      File(imagePath!),
+                      fit: BoxFit.cover,
+                      cacheWidth: cacheWidth,
+                    ),
+                  );
+                },
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,

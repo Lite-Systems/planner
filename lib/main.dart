@@ -46,11 +46,11 @@ void main() async {
       child: MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => SettingsProvider()),
-          ChangeNotifierProvider(create: (_) => WalletProvider()..loadData()),
-          ChangeNotifierProvider(create: (_) => ProjectProvider()..loadData()),
+          ChangeNotifierProvider(create: (_) => WalletProvider()),
+          ChangeNotifierProvider(create: (_) => ProjectProvider()),
           ChangeNotifierProvider(create: (_) => LocaleProvider()),
-          ChangeNotifierProvider(create: (_) => ExpensesProvider()..loadData()),
-          ChangeNotifierProvider(create: (_) => IncomeProvider()..loadData()),
+          ChangeNotifierProvider(create: (_) => ExpensesProvider()),
+          ChangeNotifierProvider(create: (_) => IncomeProvider()),
         ],
         child: ProviderWiring(
           child: EasyLocalization(
@@ -64,7 +64,12 @@ void main() async {
     ),
   );
 
-  unawaited(_initializeBackgroundServices());
+  // Nothing but settings/locale restore runs before the first frame; Firebase,
+  // FCM, notifications and (via the USD widget) the rate fetch all start once
+  // the first frame is on screen.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_initializeBackgroundServices());
+  });
 }
 
 /// Cross-provider wiring that must live below [MultiProvider] and above every
@@ -93,6 +98,8 @@ class _ProviderWiringState extends State<ProviderWiring> {
     _wired = true;
     final projects = Provider.of<ProjectProvider>(context, listen: false);
     final income = Provider.of<IncomeProvider>(context, listen: false);
+    final expenses = Provider.of<ExpensesProvider>(context, listen: false);
+    final wallet = Provider.of<WalletProvider>(context, listen: false);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     // Paying a task creates the matching income record; unpaying removes it.
     projects.onTaskPaidChanged = (task, isPaid) async {
@@ -102,6 +109,21 @@ class _ProviderWiringState extends State<ProviderWiring> {
         await income.removeIncomeForTask(task.id);
       }
     };
+    // Wallet balances follow income/expense changes via a SQL-grouped cache.
+    income.addListener(() => unawaited(wallet.refreshFlowTotals()));
+    expenses.addListener(() => unawaited(wallet.refreshFlowTotals()));
+    // Load every provider in parallel after the first frame; each notifies its
+    // listeners when ready.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(
+        Future.wait([
+          wallet.loadData(),
+          projects.loadData(),
+          expenses.loadData(),
+          income.loadData(),
+        ]),
+      );
+    });
   }
 
   @override
@@ -126,13 +148,18 @@ Future<void> _configureDesktopDatabase() async {
 }
 
 Future<void> _initializeBackgroundServices() async {
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    _registerFcmHandlers();
-  } catch (e) {
-    log('Firebase initialization failed: $e');
+  // Firebase/FCM are not functional on macOS in this build (the app sandbox has
+  // no network-client entitlement and there is no macOS-specific Firebase app),
+  // so skip them there. Other platforms keep the existing behaviour.
+  if (kIsWeb || !Platform.isMacOS) {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      _registerFcmHandlers();
+    } catch (e) {
+      log('Firebase initialization failed: $e');
+    }
   }
 
   try {
@@ -150,21 +177,27 @@ class PlannerApp extends StatelessWidget {
     final isDarkMode = context.select<SettingsProvider, bool>(
       (s) => s.isDarkMode,
     );
+    final app = CupertinoApp(
+      title: 'appName'.tr(),
+      debugShowCheckedModeBanner: false,
+      theme: isDarkMode ? AppThems.darkTheme() : AppThems.lightTheme(),
+      locale: context.locale,
+      supportedLocales: context.supportedLocales,
+      localizationsDelegates: context.localizationDelegates,
+      home: const SplashScreen(),
+      scrollBehavior: const AppScrollBehavior(),
+      builder: (context, child) => AppLayoutHost(
+        child: AppLockGate(child: child ?? const SizedBox.shrink()),
+      ),
+    );
+
+    // The in-app update prompt does not function on macOS here; skip it there
+    // while keeping it on the platforms that support it.
+    if (!kIsWeb && Platform.isMacOS) return app;
+
     return UpgradeAlert(
       dialogStyle: UpgradeDialogStyle.cupertino,
-      child: CupertinoApp(
-        title: 'appName'.tr(),
-        debugShowCheckedModeBanner: false,
-        theme: isDarkMode ? AppThems.darkTheme() : AppThems.lightTheme(),
-        locale: context.locale,
-        supportedLocales: context.supportedLocales,
-        localizationsDelegates: context.localizationDelegates,
-        home: const SplashScreen(),
-        scrollBehavior: const AppScrollBehavior(),
-        builder: (context, child) => AppLayoutHost(
-          child: AppLockGate(child: child ?? const SizedBox.shrink()),
-        ),
-      ),
+      child: app,
     );
   }
 }

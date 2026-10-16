@@ -6,7 +6,6 @@ import 'package:planner/core/utils/no_animation_route.dart';
 import 'package:planner/models/income.dart';
 import 'package:planner/providers/income_provider.dart';
 import 'package:planner/providers/settings_provider.dart';
-import 'package:planner/providers/wallet_provider.dart';
 import 'package:planner/core/utils/app_layout.dart';
 import 'package:planner/screens/income/add_income_screen.dart';
 import 'package:planner/screens/income/income_categories_screen.dart';
@@ -17,8 +16,12 @@ class IncomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<IncomeProvider, SettingsProvider, WalletProvider>(
-      builder: (_, provider, settings, wallet, _) {
+    return Consumer<IncomeProvider>(
+      builder: (_, provider, _) {
+        context.select<SettingsProvider, (String, bool, double, double)>(
+          (s) => (s.currency, s.hideAmounts, s.usdToEgp, s.usdToSar),
+        );
+        final settings = context.read<SettingsProvider>();
         final total = provider.incomes.fold<double>(
           0,
           (sum, e) => sum + settings.convert(e.amount, e.currency),

@@ -13,6 +13,10 @@ class ProjectProvider with ChangeNotifier {
   final Map<String, List<ProjectTask>> _tasks = {}; // projectId -> tasks
   final Map<String, List<ProjectMember>> _members = {}; // projectId -> members
 
+  /// Cached task aggregates, refreshed from SQL once per mutation so summary
+  /// widgets never re-scan the task list on every build.
+  _TaskStats _stats = _TaskStats.empty;
+
   /// Optional callback fired when a task's isPaid status changes.
   /// Wired to IncomeProvider in HomeScreen after providers are available.
   TaskPaidCallback? onTaskPaidChanged;
@@ -49,9 +53,19 @@ class ProjectProvider with ChangeNotifier {
       eligible = eligible.where((t) => idSet.contains(t.id));
     }
     final list = eligible.toList();
+    if (list.isEmpty) return 0;
+
+    final tasks = _tasks[projectId];
     for (final task in list) {
-      await updateTask(task.copyWith(isArchived: true));
+      final archived = task.copyWith(isArchived: true);
+      await DatabaseHelper.instance.updateTask(archived);
+      final index = tasks?.indexWhere((t) => t.id == archived.id) ?? -1;
+      if (index != -1) tasks![index] = archived;
+      await NotificationService().cancelTaskReminder(archived.id);
     }
+    // One aggregate refresh and one notification for the whole batch.
+    await _refreshStats();
+    notifyListeners();
     return list.length;
   }
 
@@ -66,53 +80,39 @@ class ProjectProvider with ChangeNotifier {
     return members.where((m) => idSet.contains(m.id)).toList();
   }
 
-  int get totalTasksCount {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => !t.isArchived)
-        .length;
-  }
+  int get totalTasksCount => _stats.total;
+  int get completedTasksCount => _stats.completed;
+  int get pendingTasksCount => _stats.pending;
+  int get inProgressTasksCount => _stats.inProgress;
+  double get totalEarnings => _stats.totalEarnings;
+  double get paidEarnings => _stats.paidEarnings;
+  double get unpaidEarnings => _stats.totalEarnings - _stats.paidEarnings;
 
-  int get completedTasksCount {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => t.isCompleted && !t.isArchived)
-        .length;
-  }
-
-  int get pendingTasksCount {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => t.status == 'toDo' && !t.isArchived)
-        .length;
-  }
-
-  int get inProgressTasksCount {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => t.status == 'inProgress' && !t.isArchived)
-        .length;
-  }
-
-  double get totalEarnings {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => !t.isArchived)
-        .fold(0.0, (sum, t) => sum + t.cost);
-  }
-
-  double get paidEarnings {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => t.isPaid && !t.isArchived)
-        .fold(0.0, (sum, t) => sum + t.cost);
-  }
-
-  double get unpaidEarnings {
-    return _tasks.values
-        .expand((element) => element)
-        .where((t) => !t.isPaid && !t.isArchived)
-        .fold(0.0, (sum, t) => sum + t.cost);
+  /// Recomputes the cached task aggregates with a single grouped SQL query.
+  Future<void> _refreshStats() async {
+    try {
+      final rows = await DatabaseHelper.instance.getProjectTaskAggregates();
+      var total = 0, completed = 0, pending = 0, inProgress = 0;
+      var totalEarnings = 0.0, paidEarnings = 0.0;
+      for (final row in rows) {
+        total += (row['total'] as num?)?.toInt() ?? 0;
+        completed += (row['completed'] as num?)?.toInt() ?? 0;
+        pending += (row['pending'] as num?)?.toInt() ?? 0;
+        inProgress += (row['inProgress'] as num?)?.toInt() ?? 0;
+        totalEarnings += (row['totalEarnings'] as num?)?.toDouble() ?? 0;
+        paidEarnings += (row['paidEarnings'] as num?)?.toDouble() ?? 0;
+      }
+      _stats = _TaskStats(
+        total: total,
+        completed: completed,
+        pending: pending,
+        inProgress: inProgress,
+        totalEarnings: totalEarnings,
+        paidEarnings: paidEarnings,
+      );
+    } catch (e) {
+      debugPrint('ProjectProvider _refreshStats error: $e');
+    }
   }
 
   Future<void> loadData() async {
@@ -128,6 +128,7 @@ class ProjectProvider with ChangeNotifier {
       for (final member in allMembers) {
         _members.putIfAbsent(member.projectId, () => []).add(member);
       }
+      await _refreshStats();
     } catch (e) {
       debugPrint('ProjectProvider loadData error: $e');
     }
@@ -140,6 +141,7 @@ class ProjectProvider with ChangeNotifier {
       _members[projectId] = await DatabaseHelper.instance.getProjectMembers(
         projectId,
       );
+      await _refreshStats();
     } catch (e) {
       debugPrint('ProjectProvider loadTasks error: $e');
     }
@@ -167,6 +169,7 @@ class ProjectProvider with ChangeNotifier {
     _projects.removeWhere((p) => p.id == id);
     _tasks.remove(id);
     _members.remove(id);
+    await _refreshStats();
     notifyListeners();
   }
 
@@ -226,6 +229,7 @@ class ProjectProvider with ChangeNotifier {
     }
     _tasks.putIfAbsent(task.projectId, () => []).add(task);
     await _syncTaskReminder(task);
+    await _refreshStats();
     notifyListeners();
   }
 
@@ -255,9 +259,10 @@ class ProjectProvider with ChangeNotifier {
       );
       if (index != -1) {
         _tasks[taskToUpdate.projectId]![index] = taskToUpdate;
-        notifyListeners();
       }
     }
+    await _refreshStats();
+    notifyListeners();
     await _syncTaskReminder(taskToUpdate);
     if (paymentChanged && onTaskPaidChanged != null) {
       await onTaskPaidChanged!(taskToUpdate, taskToUpdate.isPaid);
@@ -269,6 +274,7 @@ class ProjectProvider with ChangeNotifier {
     await NotificationService().cancelTaskReminder(id);
     if (_tasks.containsKey(projectId)) {
       _tasks[projectId]!.removeWhere((t) => t.id == id);
+      await _refreshStats();
       notifyListeners();
     }
   }
@@ -325,4 +331,32 @@ class ProjectProvider with ChangeNotifier {
 
     await updateTask(updatedTask);
   }
+}
+
+/// Cached task aggregates (non-archived tasks), refreshed from SQL.
+class _TaskStats {
+  const _TaskStats({
+    required this.total,
+    required this.completed,
+    required this.pending,
+    required this.inProgress,
+    required this.totalEarnings,
+    required this.paidEarnings,
+  });
+
+  static const empty = _TaskStats(
+    total: 0,
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+    totalEarnings: 0,
+    paidEarnings: 0,
+  );
+
+  final int total;
+  final int completed;
+  final int pending;
+  final int inProgress;
+  final double totalEarnings;
+  final double paidEarnings;
 }

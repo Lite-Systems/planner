@@ -60,3 +60,54 @@ Date: 2026-10-13 · Scope: desktop-first review (macOS/Windows), UI professional
 - `add_task_screen.dart` (1,160 lines) and `project_detail_screen.dart` (820 lines) predate the token system — migrate when next touched.
 - Home dashboard uses an eager (non-builder) `ListView`; children are a fixed set so it is acceptable, but convert to `CustomScrollView` + slivers if the dashboard grows.
 - `todos_screen.dart` recomputes the full expand/sort per notification — fine at personal-finance data volumes, worth memoizing if task counts grow into the thousands.
+
+## Third-pass changes (2026-10-16)
+
+### Performance
+
+1. **Voice sheet save button scoped** — `voice_task_sheet.dart` no longer calls
+   `setState(() {})` on every keystroke (`onChanged`) or after speech init. The
+   save button enable state now lives in a `ValueListenableBuilder` bound to
+   `_taskNameController`; only the button subtree rebuilds per keystroke.
+2. **Voice-field mic indicators scoped** — `add_task_screen.dart`
+   `_toggleFieldSpeech` used to `setState(() {})` the entire sheet on every
+   listening-status change and recognition result. `_listeningFieldName` is now
+   backed by a `ValueNotifier` (`_listeningFieldNotifier`); the three mic
+   suffixes (`_buildMicSuffix`) and the three "listening" placeholders are
+   `ValueListenableBuilder`-scoped, so nothing else in the 1,100-line sheet
+   rebuilds during dictation. The now-unused `StateSetter dialogSetState`
+   parameter was removed from `_toggleFieldSpeech` / `_buildMicSuffix`.
+3. **Archive list virtualized** — `archive_screen.dart` switched its
+   project-grouped non-builder `ListView` to `ListView.builder` (one section per
+   project group). Audited the other flagged lists and converted nothing there,
+   because they were already builder-based or fixed-content:
+   `projects_screen.dart:101`, `todos_screen.dart:89`,
+   `income_screen.dart:140` (builder), `settings_screen.dart:52` /
+   `home_screen.dart:120` (fixed curated sets — documented as acceptable).
+4. **Animation-gate audit** — re-checked the spots the second pass flagged:
+   `expense_categories_screen.dart` (`_CategoryList`) and `expenses_screen.dart`
+   (`_entranceDone`, desktop check, first-8 cap on `_expenseCard`) already
+   implement the documented gate. No additional ungated entrance animations
+   found; nothing changed.
+
+### UI professionalization
+
+5. **`project_detail_screen.dart` tokenized** — filter panel/chips, filter
+   toggle + count badge, customer label, bottom action row, and the voice
+   gradient button now consume `AppRadius`/`AppSpacing`/`AppText`.
+   `AppShadows.hero` replaces the ad-hoc single-layer mic-button shadow.
+   Filter chips use `AppColors.elevatedBackground(context)` instead of
+   hard-coded `systemGrey6`, so they adapt to dark mode, and are wrapped in
+   `AppClickable` for desktop cursor feedback.
+   Note: the purple/pink voice gradient (`0xFF8B5CF6`→`0xFFEC4899`) is kept
+   literal; only its pink stop references `AppColors.expensePrimary`. If it
+   gains a third usage, promote it to a named gradient in `AppColors`.
+6. **`add_task_screen.dart` tokenized (mechanical pass)** — section paddings,
+   field paddings, gaps, and card radii converted to `AppSpacing`/`AppRadius`/
+   `AppText`. Values outside the token scale (2, 6, 10 px insets) were left
+   literal rather than nudging the layout to the scale.
+
+## Verified
+
+- `flutter analyze` — 0 errors, 0 warnings (10 pre-existing info lints, unchanged).
+- `flutter test` — 20/20 passing.

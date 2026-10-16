@@ -24,7 +24,7 @@ class ProjectMembersSheet extends StatelessWidget {
     return AppLayout.sheet(
       context,
       Container(
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.sizeOf(context).height * 0.7,
         decoration: BoxDecoration(
           color: AppColors.cardBackground(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),

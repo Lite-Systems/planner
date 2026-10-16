@@ -11,7 +11,7 @@ permissions:
 
 env:
   WINDOWS_RELEASE_DIR: build/windows/x64/runner/Release
-  WINDOWS_INSTALLER: build/windows/artifacts/fekra_pos.exe
+  WINDOWS_INSTALLER: build/windows/artifacts/planner.exe
 
 jobs:
   build-windows:
@@ -66,7 +66,7 @@ jobs:
       - name: Validate release bundle
         run: |
           $requiredFiles = @(
-            'fekra_pos.exe',
+            'planner.exe',
             'flutter_windows.dll',
             'msvcp140.dll',
             'vcruntime140.dll',
@@ -99,7 +99,7 @@ jobs:
             throw 'A numeric release version was not found in pubspec.yaml.'
           }
           $version = $versionLine.Matches[0].Groups[1].Value
-          & $iscc "/DAppVersion=$version" windows/installer/fekra_pos.iss
+          & $iscc "/DAppVersion=$version" windows/installer/planner.iss
           if ($LASTEXITCODE -ne 0) {
             throw 'Windows installer compilation failed.'
           }
