@@ -37,9 +37,11 @@ class ProjectDetailScreen extends StatefulWidget {
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isSelectionMode = false;
   final Set<String> _selectedTaskIds = {};
   String _selectedType = 'all';
+  String _selectedStatus = 'all';
   String _selectedPaymentStatus = 'all';
   String _selectedMemberId = 'all';
   bool _filtersExpanded = false;
@@ -59,6 +61,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -68,7 +71,9 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     if (oldWidget.project.id == widget.project.id) return;
     _isSelectionMode = false;
     _selectedTaskIds.clear();
+    _searchController.clear();
     _selectedType = 'all';
+    _selectedStatus = 'all';
     _selectedPaymentStatus = 'all';
     _selectedMemberId = 'all';
     _filtersExpanded = false;
@@ -232,40 +237,56 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     );
   }
 
-  bool get _hasFilters =>
-      _selectedType != 'all' ||
-      _selectedPaymentStatus != 'all' ||
-      _selectedMemberId != 'all';
+  bool get _hasFilters => _activeFilterCount > 0;
 
   int get _activeFilterCount =>
+      (_searchController.text.trim().isNotEmpty ? 1 : 0) +
       (_selectedType != 'all' ? 1 : 0) +
+      (_selectedStatus != 'all' ? 1 : 0) +
       (_selectedPaymentStatus != 'all' ? 1 : 0) +
       (_selectedMemberId != 'all' ? 1 : 0);
 
   void _clearFilters() {
     setState(() {
+      _searchController.clear();
       _selectedType = 'all';
+      _selectedStatus = 'all';
       _selectedPaymentStatus = 'all';
       _selectedMemberId = 'all';
     });
   }
 
-  Widget _buildFilters(List<ProjectMember> members) {
-    return Column(
-      children: [
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(
-              AppSpacing.lg,
-              AppSpacing.sm,
-              AppSpacing.lg,
-              AppSpacing.xs,
+  Widget _buildFilters(List<ProjectMember> members) => Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: CupertinoSearchTextField(
+                key: const ValueKey('project-task-search'),
+                controller: _searchController,
+                placeholder: 'searchTasks'.tr(),
+                style: AppText.body(context),
+                onTap: () {
+                  if (_filtersExpanded) {
+                    setState(() => _filtersExpanded = false);
+                  }
+                },
+                onChanged: (_) => setState(() {}),
+              ),
             ),
-            child: CupertinoButton(
+            const SizedBox(width: AppSpacing.sm),
+            CupertinoButton(
+              key: const ValueKey('project-task-filters'),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              onPressed: () =>
-                  setState(() => _filtersExpanded = !_filtersExpanded),
+              onPressed: () {
+                FocusScope.of(context).unfocus();
+                setState(() => _filtersExpanded = !_filtersExpanded);
+              },
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -276,183 +297,178 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     size: 14,
                   ),
                   const SizedBox(width: 6),
-                  Text('filterProjects'.tr(), style: AppText.caption(context)),
+                  Text('filterTasks'.tr(), style: AppText.caption(context)),
                   if (_hasFilters) ...[
                     const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(AppRadius.sm),
-                      ),
-                      child: Text(
-                        _activeFilterCount.toString(),
-                        style: AppText.caption(
-                          context,
-                        ).copyWith(color: CupertinoColors.white, fontSize: 11),
-                      ),
+                    Text(
+                      '($_activeFilterCount)',
+                      style: AppText.caption(context),
                     ),
                   ],
                 ],
               ),
             ),
-          ),
+          ],
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 180),
-          alignment: Alignment.topCenter,
-          child: _filtersExpanded
-              ? _buildFilterPanel(members)
-              : const SizedBox.shrink(),
+      ),
+      AnimatedSize(
+        duration: const Duration(milliseconds: 180),
+        alignment: Alignment.topCenter,
+        child: _filtersExpanded
+            ? _buildFilterPanel(members)
+            : const SizedBox.shrink(),
+      ),
+    ],
+  );
+
+  Widget _buildFilterPanel(List<ProjectMember> members) => Container(
+    margin: const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      0,
+      AppSpacing.lg,
+      AppSpacing.sm,
+    ),
+    decoration: BoxDecoration(
+      color: AppColors.elevatedBackground(context),
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      border: Border.all(color: AppColors.separator(context)),
+    ),
+    child: ConstrainedBox(
+      // Keep the task list usable in short windows and with large mobile text.
+      constraints: BoxConstraints(
+        maxHeight:
+            (MediaQuery.sizeOf(context).height -
+                MediaQuery.viewInsetsOf(context).bottom) *
+            0.35,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _filterGroup(
+              title: 'taskType'.tr(),
+              group: 'type',
+              selected: _selectedType,
+              options: {
+                for (final value in ['all', 'newFeature', 'bug', 'enhancement'])
+                  value: value.tr(),
+              },
+              onSelected: (value) => setState(() => _selectedType = value),
+            ),
+            _filterGroup(
+              title: 'taskStatus'.tr(),
+              group: 'status',
+              selected: _selectedStatus,
+              options: {
+                for (final value in ['all', 'toDo', 'inProgress', 'done'])
+                  value: value.tr(),
+              },
+              onSelected: (value) => setState(() => _selectedStatus = value),
+            ),
+            _filterGroup(
+              title: 'taskPayment'.tr(),
+              group: 'payment',
+              selected: _selectedPaymentStatus,
+              options: {
+                for (final value in ['all', 'paid', 'unpaid'])
+                  value: value.tr(),
+              },
+              onSelected: (value) =>
+                  setState(() => _selectedPaymentStatus = value),
+            ),
+            if (members.isNotEmpty)
+              _filterGroup(
+                title: 'allMembers'.tr(),
+                group: 'member',
+                selected: _selectedMemberId,
+                options: {
+                  'all': 'allMembers'.tr(),
+                  for (final member in members) member.id: member.name,
+                },
+                onSelected: (value) =>
+                    setState(() => _selectedMemberId = value),
+              ),
+            if (_hasFilters)
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: CupertinoButton(
+                  key: const ValueKey('project-task-clear-filters'),
+                  onPressed: _clearFilters,
+                  child: Text('clearFilters'.tr()),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _filterGroup({
+    required String title,
+    required String group,
+    required String selected,
+    required Map<String, String> options,
+    required ValueChanged<String> onSelected,
+  }) => Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.md),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: AppText.bodySecondary(context)),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final option in options.entries)
+              _buildFilterChip(
+                key: ValueKey('task-$group-${option.key}'),
+                label: option.value,
+                isSelected: selected == option.key,
+                onTap: () => onSelected(option.key),
+              ),
+          ],
         ),
       ],
-    );
-  }
-
-  Widget _buildFilterPanel(List<ProjectMember> members) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        0,
-        AppSpacing.lg,
-        AppSpacing.sm,
-      ),
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.elevatedBackground(context),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.separator(context)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Row(
-              children: [
-                _buildFilterChip(
-                  label: 'all'.tr(),
-                  isSelected: _selectedType == 'all',
-                  onTap: () => setState(() => _selectedType = 'all'),
-                ),
-                _buildFilterChip(
-                  label: 'newFeature'.tr(),
-                  isSelected: _selectedType == 'newFeature',
-                  onTap: () => setState(() => _selectedType = 'newFeature'),
-                ),
-                _buildFilterChip(
-                  label: 'bug'.tr(),
-                  isSelected: _selectedType == 'bug',
-                  onTap: () => setState(() => _selectedType = 'bug'),
-                ),
-                _buildFilterChip(
-                  label: 'enhancement'.tr(),
-                  isSelected: _selectedType == 'enhancement',
-                  onTap: () => setState(() => _selectedType = 'enhancement'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Row(
-              children: [
-                _buildFilterChip(
-                  label: 'all'.tr(),
-                  isSelected: _selectedPaymentStatus == 'all',
-                  onTap: () => setState(() => _selectedPaymentStatus = 'all'),
-                ),
-                _buildFilterChip(
-                  label: 'paid'.tr(),
-                  isSelected: _selectedPaymentStatus == 'paid',
-                  onTap: () => setState(() => _selectedPaymentStatus = 'paid'),
-                ),
-                _buildFilterChip(
-                  label: 'unpaid'.tr(),
-                  isSelected: _selectedPaymentStatus == 'unpaid',
-                  onTap: () =>
-                      setState(() => _selectedPaymentStatus = 'unpaid'),
-                ),
-              ],
-            ),
-          ),
-          if (members.isNotEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-              child: Row(
-                children: [
-                  _buildFilterChip(
-                    label: 'allMembers'.tr(),
-                    isSelected: _selectedMemberId == 'all',
-                    onTap: () => setState(() => _selectedMemberId = 'all'),
-                  ),
-                  ...members.map(
-                    (m) => _buildFilterChip(
-                      label: m.name,
-                      isSelected: _selectedMemberId == m.id,
-                      onTap: () => setState(() => _selectedMemberId = m.id),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (_hasFilters)
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: CupertinoButton(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                  AppSpacing.lg,
-                  0,
-                ),
-                onPressed: _clearFilters,
-                child: Text('clearFilters'.tr()),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+    ),
+  );
 
   Widget _buildFilterChip({
+    Key? key,
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
-    return AppClickable(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: AppSpacing.sm),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary
-              : AppColors.elevatedBackground(context),
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-        child: Text(
-          label,
-          style: isSelected
-              ? AppText.caption(context).copyWith(
-                  color: CupertinoColors.white,
-                  fontWeight: FontWeight.w600,
-                )
-              : AppText.caption(
-                  context,
-                ).copyWith(color: CupertinoColors.label, fontSize: 13),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: AppClickable(
+        key: key,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.sm,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary
+                : AppColors.elevatedBackground(context),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+          ),
+          child: Text(
+            label,
+            style: isSelected
+                ? AppText.caption(context).copyWith(
+                    color: CupertinoColors.white,
+                    fontWeight: FontWeight.w600,
+                  )
+                : AppText.caption(context).copyWith(
+                    color: AppColors.secondaryLabel(context),
+                    fontSize: 13,
+                  ),
+          ),
         ),
       ),
     );
@@ -650,6 +666,24 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           var tasks = provider.activeTasks(widget.project.id);
 
                           // Apply Filters
+                          final query = _searchController.text
+                              .trim()
+                              .toLowerCase();
+                          if (query.isNotEmpty) {
+                            tasks = tasks
+                                .where(
+                                  (t) => t.name.toLowerCase().contains(query),
+                                )
+                                .toList();
+                          }
+                          if (_selectedStatus != 'all') {
+                            tasks = tasks.where((t) {
+                              final status = t.isDone
+                                  ? 'done'
+                                  : (t.status == 'todo' ? 'toDo' : t.status);
+                              return status == _selectedStatus;
+                            }).toList();
+                          }
                           if (_selectedType != 'all') {
                             tasks = tasks
                                 .where((t) => t.type == _selectedType)
@@ -674,7 +708,22 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           }
 
                           if (tasks.isEmpty) {
-                            return Center(child: Text('noData'.tr()));
+                            return Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    (_hasFilters ? 'noMatchingTasks' : 'noData')
+                                        .tr(),
+                                  ),
+                                  if (_hasFilters)
+                                    CupertinoButton(
+                                      onPressed: _clearFilters,
+                                      child: Text('clearFilters'.tr()),
+                                    ),
+                                ],
+                              ),
+                            );
                           }
 
                           return ListView.builder(
@@ -731,7 +780,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                 children: [
                                   const Icon(CupertinoIcons.add, size: 18),
                                   const SizedBox(width: 6),
-                                  Text('addTask'.tr()),
+                                  Flexible(
+                                    child: Text(
+                                      'addTask'.tr(),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                 ],
                               ),
                               onPressed: () {
@@ -747,58 +801,63 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
-                          CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            onPressed: () {
-                              showCupertinoModalPopup(
-                                useRootNavigator: false,
-                                context: context,
-                                builder: (_) => VoiceTaskSheet(
-                                  projectId: widget.project.id,
+                          Expanded(
+                            child: CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              onPressed: () {
+                                showCupertinoModalPopup(
+                                  useRootNavigator: false,
+                                  context: context,
+                                  builder: (_) => VoiceTaskSheet(
+                                    projectId: widget.project.id,
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.lg,
+                                  vertical: AppSpacing.md,
                                 ),
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.lg,
-                                vertical: AppSpacing.md,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF8B5CF6),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFF8B5CF6),
+                                      AppColors.expensePrimary,
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.md,
+                                  ),
+                                  boxShadow: AppShadows.hero(
+                                    context,
                                     AppColors.expensePrimary,
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.md,
-                                ),
-                                boxShadow: AppShadows.hero(
-                                  context,
-                                  AppColors.expensePrimary,
-                                  alpha: 0.25,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    CupertinoIcons.mic_fill,
-                                    color: CupertinoColors.white,
-                                    size: 18,
+                                    alpha: 0.25,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'voiceCreate'.tr(),
-                                    style: AppText.body(context).copyWith(
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      CupertinoIcons.mic_fill,
                                       color: CupertinoColors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                      size: 18,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        'voiceCreate'.tr(),
+                                        textAlign: TextAlign.center,
+                                        style: AppText.body(context).copyWith(
+                                          color: CupertinoColors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),

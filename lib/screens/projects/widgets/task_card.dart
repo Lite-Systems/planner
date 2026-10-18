@@ -106,7 +106,10 @@ class _TaskCardState extends State<TaskCard> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -139,11 +142,9 @@ class _TaskCardState extends State<TaskCard> {
                             ),
                           ),
                         ),
-                        Spacer(),
                         // Timer Display — ticks itself every second; only the
                         // elapsed time inside this chip rebuilds, never the card.
                         _LiveTimerChip(task: task),
-                        const SizedBox(width: 8),
                         // Timer Button
                         MouseRegion(
                           cursor: SystemMouseCursors.click,

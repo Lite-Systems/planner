@@ -33,5 +33,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Smart Planner uses speech recognition to turn your dictation into task names and details.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Smart Planner uses the microphone when you choose to dictate a task.</string>
 </dict>
 </plist>

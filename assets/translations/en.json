@@ -345,4 +345,13 @@
     ,"dashboardHideAmounts": "Hide amounts"
     ,"dashboardShowAmounts": "Show amounts"
     ,"dashboardOpenMenu": "Open menu"
+    ,"searchTasks": "Search task name"
+    ,"filterTasks": "Filters"
+    ,"taskType": "Task type"
+    ,"taskStatus": "Task status"
+    ,"taskPayment": "Payment"
+    ,"noMatchingTasks": "No tasks match your filters"
+    ,"ratesDailyReference": "Daily reference rates · not live market prices"
+    ,"ratesDefaultFallback": "Could not refresh. Showing default rates. Tap refresh to retry."
+    ,"ratesSavedFallback": "Could not refresh. Showing saved rates. Tap refresh to retry."
 }

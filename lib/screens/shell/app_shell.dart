@@ -1,5 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Tooltip;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -221,6 +222,12 @@ class _ModuleBar extends StatelessWidget {
     builder: (context, constraints) {
       final narrow = constraints.maxWidth < 720;
       final labels = constraints.maxWidth >= 1100;
+      final desktop = switch (defaultTargetPlatform) {
+        TargetPlatform.macOS ||
+        TargetPlatform.windows ||
+        TargetPlatform.linux => true,
+        _ => false,
+      };
       final navigation = Row(
         children: [
           for (final module in sections)
@@ -253,7 +260,7 @@ class _ModuleBar extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Expanded(child: _CompactBrand()),
+                      Expanded(child: _CompactBrand(showName: !desktop)),
                       _PrivacyButton(),
                     ],
                   ),
@@ -263,7 +270,10 @@ class _ModuleBar extends StatelessWidget {
               )
             : Row(
                 children: [
-                  const SizedBox(width: 170, child: _CompactBrand()),
+                  SizedBox(
+                    width: desktop ? 24 : 170,
+                    child: _CompactBrand(showName: !desktop),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(child: navigation),
                   const SizedBox(width: 12),
@@ -276,34 +286,38 @@ class _ModuleBar extends StatelessWidget {
 }
 
 class _CompactBrand extends StatelessWidget {
-  const _CompactBrand();
+  const _CompactBrand({required this.showName});
+
+  final bool showName;
 
   @override
   Widget build(BuildContext context) => Row(
     children: [
       Container(
         key: const ValueKey('app-brand-icon'),
-        width: 28,
-        height: 28,
+        width: 24,
+        height: 24,
         decoration: BoxDecoration(
           color: AppColors.primary,
-          borderRadius: BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(7),
         ),
         child: const Icon(
           CupertinoIcons.square_grid_2x2,
           color: CupertinoColors.white,
-          size: 16,
+          size: 14,
         ),
       ),
-      const SizedBox(width: 9),
-      Flexible(
-        child: Text(
-          'Smart Planner',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppText.cardTitle(context).copyWith(fontSize: 13),
+      if (showName) const SizedBox(width: 9),
+      if (showName)
+        Flexible(
+          child: Text(
+            'Smart Planner',
+            key: const ValueKey('app-brand-name'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppText.cardTitle(context).copyWith(fontSize: 13),
+          ),
         ),
-      ),
     ],
   );
 }

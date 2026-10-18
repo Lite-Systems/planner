@@ -344,4 +344,13 @@
     ,"dashboardHideAmounts": "إخفاء المبالغ"
     ,"dashboardShowAmounts": "إظهار المبالغ"
     ,"dashboardOpenMenu": "فتح القائمة"
+    ,"searchTasks": "البحث باسم المهمة"
+    ,"filterTasks": "التصفية"
+    ,"taskType": "نوع المهمة"
+    ,"taskStatus": "حالة المهمة"
+    ,"taskPayment": "الدفع"
+    ,"noMatchingTasks": "لا توجد مهام تطابق عوامل التصفية"
+    ,"ratesDailyReference": "أسعار مرجعية يومية · ليست أسعار السوق اللحظية"
+    ,"ratesDefaultFallback": "تعذّر التحديث. تُعرض الأسعار الافتراضية. اضغط تحديث للمحاولة مجددًا."
+    ,"ratesSavedFallback": "تعذّر التحديث. تُعرض الأسعار المحفوظة. اضغط تحديث للمحاولة مجددًا."
 }

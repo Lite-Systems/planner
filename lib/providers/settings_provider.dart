@@ -24,6 +24,8 @@ class SettingsProvider with ChangeNotifier {
   double _usdToSar = 3.75;
   String _lastRatesUpdate = '';
   bool _isFetchingRates = false;
+  bool _ratesRefreshFailed = false;
+  late final Future<void> _settingsReady;
   bool _compactDensity = false;
   bool _rememberLastSection = false;
   bool _keyboardShortcuts = true;
@@ -50,6 +52,7 @@ class SettingsProvider with ChangeNotifier {
   double get usdToSar => _usdToSar;
   String get lastRatesUpdate => _lastRatesUpdate;
   bool get isFetchingRates => _isFetchingRates;
+  bool get ratesRefreshFailed => _ratesRefreshFailed;
   bool get compactDensity => _compactDensity;
   bool get rememberLastSection => _rememberLastSection;
   bool get keyboardShortcuts => _keyboardShortcuts;
@@ -59,7 +62,7 @@ class SettingsProvider with ChangeNotifier {
   double get listGap => _compactDensity ? 6 : 12;
 
   SettingsProvider() {
-    _loadSettings();
+    _settingsReady = _loadSettings();
   }
 
   Future<void> _loadSettings() async {
@@ -127,27 +130,42 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchAndSaveRates() async {
-    _isFetchingRates = true;
-    notifyListeners();
-
-    final rates = await CurrencyService.fetchLatestRates();
-    if (rates != null) {
-      final prefs = await SharedPreferences.getInstance();
-      _usdToEgp = rates['EGP'] ?? _usdToEgp;
-      _usdToSar = rates['SAR'] ?? _usdToSar;
-
-      final now = DateTime.now();
-      final formatter = DateFormat('yyyy-MM-dd HH:mm');
-      _lastRatesUpdate = formatter.format(now);
-
-      await prefs.setDouble('usdToEgp', _usdToEgp);
-      await prefs.setDouble('usdToSar', _usdToSar);
-      await prefs.setString('lastRatesUpdate', _lastRatesUpdate);
+  Future<void> refreshRatesIfNeeded() async {
+    await _settingsReady;
+    final last = DateTime.tryParse(_lastRatesUpdate);
+    if (last == null ||
+        DateTime.now().difference(last) >= const Duration(days: 1)) {
+      await fetchAndSaveRates();
     }
+  }
 
-    _isFetchingRates = false;
+  Future<void> fetchAndSaveRates() async {
+    await _settingsReady;
+    if (_isFetchingRates) return;
+    _isFetchingRates = true;
+    _ratesRefreshFailed = false;
     notifyListeners();
+
+    try {
+      final rates = await CurrencyService.fetchLatestRates();
+      if (rates == null) {
+        _ratesRefreshFailed = true;
+        return;
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final updated = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      await prefs.setDouble('usdToEgp', rates['EGP']!);
+      await prefs.setDouble('usdToSar', rates['SAR']!);
+      await prefs.setString('lastRatesUpdate', updated);
+      _usdToEgp = rates['EGP']!;
+      _usdToSar = rates['SAR']!;
+      _lastRatesUpdate = updated;
+    } catch (_) {
+      _ratesRefreshFailed = true;
+    } finally {
+      _isFetchingRates = false;
+      notifyListeners();
+    }
   }
 
   Future<void> setDarkMode(bool value) async {

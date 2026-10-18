@@ -2,6 +2,78 @@
 
 Date: 2026-10-13 · Scope: desktop-first review (macOS/Windows), UI professionalization, latency fixes.
 
+## Project filters, compact branding and network access (2026-10-18)
+
+- Desktop top navigation no longer shows the app name, including narrow macOS
+  and Windows windows. The in-app brand icon is 24 pixels (40 on the splash).
+  Native window controls and module navigation remain available.
+- Project tasks have always-visible, trimmed, case-insensitive name search.
+  Expanded filters combine task type, status, payment and member using AND.
+  Completed legacy records are included under Done; archived tasks stay hidden.
+  Clear resets every filter, and selecting another project resets search/state.
+- Filter groups wrap and scroll in a bounded panel, leaving room for tasks.
+  Opening filters dismisses the keyboard; tapping search collapses the panel.
+  Arabic large-text regressions also exposed task status/timer-row and action
+  button overflows; those controls now wrap within the available width.
+- The existing public USD endpoint responded successfully with EGP and SAR
+  rates. Both macOS Runner configurations were missing
+  `com.apple.security.network.client`; the entitlement regression failed before
+  adding outbound access. Android already declares INTERNET; HTTPS does not
+  need an iOS App Transport Security exception.
+- Rate fetching has an eight-second whole-request deadline (including headers
+  and body), force-closes the client, and rejects invalid, non-finite, incomplete
+  or wrong-base data. Refreshes are coalesced, settings finish loading first,
+  and saved rates older than a day refresh when the dashboard opens. Offline
+  failures preserve saved rates/time, release the busy indicator and display a
+  localized saved/default fallback message with a manual retry.
+- The rate card identifies daily reference rates and links to its provider.
+  This is not a live market-price feed. See the provider's
+  [open-access API documentation](https://www.exchangerate-api.com/docs/free)
+  for daily update frequency, caching and attribution requirements.
+- Regression coverage: API response parsing, stalled headers/body, HTTP errors,
+  persistence/offline fallback, deduplication and stale refresh; real project
+  screen interaction for combined filters, reset and Arabic search; desktop
+  branding at narrow/wide sizes. No user records are changed by these tests.
+- Verification: all 70 Flutter tests pass. Analysis has no errors or warnings;
+  four pre-existing info lints remain in the PDF examples. A live read-only
+  probe of the production Dart CurrencyService also fetched valid EGP/SAR rates
+  over HTTPS; the temporary probe was removed after verification.
+
+## macOS task-save crashes (2026-10-18)
+
+The two task-save crash reports at 21:24 terminate with SIGILL inside
+`FlutterLocalNotificationsPlugin.buildUserNotificationContent`, called by
+`zonedSchedule`. Notification initialization supplied Android/iOS settings but
+no macOS settings. Startup caught that initialization error and continued;
+saving then reached the native content builder without its persisted presentation
+defaults. The native plugin force-unwraps those defaults, terminating the app.
+The task database insert happens before scheduling, so a task may already exist
+after the crash; no existing records were removed or recreated.
+
+The notification service now configures macOS Darwin settings/details and makes
+every operation await a shared initialization future. Initialization failures
+skip optional native operations safely; reminder errors cannot fail a committed
+task save. A failed initialization can be retried rather than caching failure.
+
+An earlier task-editor speech crash at 21:22 was a separate TCC termination for
+missing `NSSpeechRecognitionUsageDescription`. Runner now declares speech and
+microphone usage descriptions, with microphone input permitted in both debug
+and release sandbox entitlements, matching the speech plugin's macOS example.
+
+The regression uses the real ProjectProvider, temporary SQLite database, and
+real macOS notification argument serialization. It failed before the fix when
+scheduling reached the native boundary without initialization. It now holds
+initialization pending while saving, verifies only one initialization occurs,
+checks create/edit persistence, and injects notification permission errors while
+confirming tasks still save. Privacy/entitlement checks cover the speech abort.
+No test records are inserted into the user's planner database.
+
+Verification: all 53 tests pass. Full analysis has no errors or warnings, with
+four existing info lints in the PDF examples. A full app restart is required
+to load the rebuilt executable and privacy metadata. The signed Intel/Apple
+Silicon release builds successfully, passes deep/strict signature verification,
+and contains both privacy descriptions and the microphone input entitlement.
+
 ## Current application-wide UI (2026-10-18)
 
 - The dashboard palette is now the shared theme: navy surfaces, bordered panels,
@@ -9,7 +81,7 @@ Date: 2026-10-13 · Scope: desktop-first review (macOS/Windows), UI professional
   Applies to modules, details, editors, wallets, categories, archive and auth.
 - Top-bar module icons replace both sidebar and mobile drawer/bottom navigation.
   Phones show a compact two-row header; wider windows use one row with hover
-  labels. The in-app logo is 28 pixels (48 on the simplified splash screen).
+  labels. The in-app logo is 24 pixels (40 on the simplified splash screen).
 - A nested content navigator keeps the bar accessible in editors. Module changes
   close local detail routes, back returns within the module, and all Cupertino
   dialogs/popups use the same local navigator. Saved module selection, hidden

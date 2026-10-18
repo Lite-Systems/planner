@@ -53,16 +53,16 @@ class _SplashScreenState extends State<SplashScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   CupertinoIcons.square_grid_2x2,
                   color: CupertinoColors.white,
-                  size: 26,
+                  size: 22,
                 ),
               ),
               const SizedBox(height: 20),

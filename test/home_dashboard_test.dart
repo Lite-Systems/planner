@@ -161,6 +161,7 @@ void main() {
     (320.0, 'en', 1.6, TargetPlatform.android),
     (390.0, 'ar', 1.0, TargetPlatform.iOS),
     (375.0, 'ar', 1.6, TargetPlatform.android),
+    (600.0, 'en', 1.0, TargetPlatform.macOS),
     (900.0, 'en', 1.0, TargetPlatform.macOS),
     (1440.0, 'ar', 1.0, TargetPlatform.windows),
   ]) {
@@ -180,7 +181,13 @@ void main() {
       expect(find.byKey(const ValueKey('desktopSidebar')), findsNothing);
       expect(
         tester.getSize(find.byKey(const ValueKey('app-brand-icon'))),
-        const Size(28, 28),
+        const Size(24, 24),
+      );
+      expect(
+        find.byKey(const ValueKey('app-brand-name')),
+        platform == TargetPlatform.macOS || platform == TargetPlatform.windows
+            ? findsNothing
+            : findsOneWidget,
       );
       for (final section in AppSection.values) {
         await tester.tap(find.byKey(ValueKey('module-${section.name}')));
@@ -394,7 +401,7 @@ Future<SettingsProvider> _pumpDashboard(
     'expensesCurrency': 'USD',
     'usdToEgp': 50.0,
     'usdToSar': 3.75,
-    'lastRatesUpdate': '2026-10-18 19:00',
+    'lastRatesUpdate': DateTime.now().toString(),
     'isDarkMode': dark,
     'rememberLastSection': remember,
     'lastSection': lastSection,
