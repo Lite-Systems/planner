@@ -1,3 +1,5 @@
+import 'package:planner/core/widgets/app_list_section.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -56,7 +58,7 @@ class TaskArchiveScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(middle: Text('taskArchive'.tr())),
+      navigationBar: AppNavigationBar(middle: Text('taskArchive'.tr())),
       child: SafeArea(
         child: Consumer2<ProjectProvider, SettingsProvider>(
           builder: (context, projects, settings, _) {
@@ -115,7 +117,7 @@ class _ProjectArchiveSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoListSection.insetGrouped(
+    return AppListSection(
       header: Text(project.name),
       footer: Text(
         '${tasks.length} • ${settings.formatMoney(tasks.fold<double>(0, (s, t) => s + t.cost))}',

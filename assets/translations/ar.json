@@ -304,6 +304,8 @@
     "taskDueReminderBody": "مرّت ساعة على بدء {name}.",
     "desktopSettings": "سطح المكتب",
     "compactSidebar": "شريط جانبي مضغوط",
+    "expandSidebar": "توسيع القائمة الجانبية",
+    "collapseSidebar": "طي القائمة الجانبية",
     "compactSidebarSubtitle": "عرض الأيقونات فقط في الشريط الجانبي",
     "compactDensity": "كثافة مضغوطة",
     "compactDensitySubtitle": "تقليل المسافات في بطاقات لوحة التحكم",
@@ -318,4 +320,28 @@
     ,"sortBy": "ترتيب حسب"
     ,"clearFilters": "مسح عوامل التصفية"
     ,"filterProjects": "التصفية"
+    ,"macosWidget": "ويدجت macOS"
+    ,"macosWidgetSubtitle": "عرض تقدم المهام على سطح المكتب. قفل التطبيق يخفي بيانات الويدجت."
+    ,"addMacosWidget": "إضافة ويدجت إلى macOS"
+    ,"macosWidgetInstructions": "فعّل الويدجت أعلاه، ثم انقر بزر الفأرة الأيمن على سطح مكتب Mac واختر تحرير الويدجت. ابحث عن Smart Planner وأضف الحجم الصغير أو المتوسط. يمكنك أيضاً إضافته من مركز الإشعارات. يتحكم macOS في مكان الويدجت ولا يمكن للتطبيق إضافته تلقائياً."
+    ,"openMacosWidgetSettings": "فتح إعدادات سطح المكتب"
+    ,"macosWidgetUnavailable": "مشاركة الويدجت غير متاحة. استخدم نسخة macOS موقعة بنفس فريق تطوير Apple للتطبيق وامتداد الويدجت، مع تفعيل App Groups."
+    ,"macosWidgetExtensionMissing": "امتداد الويدجت غير موجود في هذه النسخة من Smart Planner. افتح أحدث نسخة كاملة من تطبيق macOS وحاول مجدداً."
+    ,"macosWidgetEnableFailed": "تعذّر تفعيل الويدجت. أعد فتح أحدث نسخة من تطبيق macOS وحاول مجدداً. لم تتغير بياناتك."
+    ,"dashboardManagement": "نظام الإدارة"
+    ,"dashboardFinancialOverview": "المؤشرات المالية"
+    ,"dashboardAutoUpdated": "محدث تلقائياً"
+    ,"dashboardLocalWorkspace": "محفوظ محلياً"
+    ,"dashboardTotalValue": "القيمة الإجمالية"
+    ,"dashboardAwaitingCollection": "قيد التحصيل"
+    ,"dashboardAllIncome": "جميع الإيرادات المسجلة"
+    ,"dashboardIncomeLessExpenses": "الدخل بعد المصروفات"
+    ,"dashboardYourWallets": "محافظك"
+    ,"dashboardNoWallets": "أضف محفظتك الأولى"
+    ,"dashboardViewTasks": "عرض المهام"
+    ,"dashboardPauseTimer": "إيقاف المؤقت مؤقتاً"
+    ,"dashboardRefreshRates": "تحديث أسعار الصرف"
+    ,"dashboardHideAmounts": "إخفاء المبالغ"
+    ,"dashboardShowAmounts": "إظهار المبالغ"
+    ,"dashboardOpenMenu": "فتح القائمة"
 }

@@ -1,3 +1,4 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -33,7 +34,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
+      navigationBar: AppNavigationBar(
         middle: Text('expenseCategories'.tr()),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -152,12 +153,9 @@ class ExpenseCategoriesScreen extends StatelessWidget {
         child: Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            color: CupertinoColors.systemBackground.resolveFrom(context),
+            color: AppColors.cardBackground(context),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: CupertinoColors.separator.resolveFrom(context),
-              width: 0.5,
-            ),
+            border: Border.all(color: AppColors.separator(context), width: 0.5),
             boxShadow: [
               BoxShadow(
                 color: catColor.withValues(alpha: 0.06),
@@ -217,9 +215,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: CupertinoColors.systemGrey5.resolveFrom(
-                              context,
-                            ),
+                            color: AppColors.elevatedBackground(context),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -261,7 +257,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: CupertinoColors.systemGrey6.resolveFrom(context),
+                      color: AppColors.elevatedBackground(context),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -287,6 +283,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
     ExpensesProvider provider,
   ) {
     showCupertinoModalPopup<void>(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoActionSheet(
         title: Text(
@@ -308,12 +305,12 @@ class ExpenseCategoriesScreen extends StatelessWidget {
                 const Icon(
                   CupertinoIcons.pencil,
                   size: 18,
-                  color: CupertinoColors.activeBlue,
+                  color: AppColors.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'editCategory'.tr(),
-                  style: const TextStyle(color: CupertinoColors.activeBlue),
+                  style: const TextStyle(color: AppColors.primary),
                 ),
               ],
             ),
@@ -355,6 +352,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
     ExpensesProvider provider,
   ) {
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoAlertDialog(
         title: Text('deleteCategory'.tr()),
@@ -374,6 +372,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
               Navigator.pop(context);
               if (!deleted) {
                 showCupertinoDialog(
+                  useRootNavigator: false,
                   context: context,
                   builder: (_) => CupertinoAlertDialog(
                     title: Text('cannotDelete'.tr()),
@@ -419,6 +418,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
     int selectedIcon = existing?.icon ?? CupertinoIcons.tag.codePoint;
 
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => CupertinoAlertDialog(
@@ -439,7 +439,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: CupertinoColors.systemGrey6.resolveFrom(ctx),
+                  color: AppColors.elevatedBackground(ctx),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -527,7 +527,7 @@ class ExpenseCategoriesScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? Color(selectedColor).withValues(alpha: 0.15)
-                            : CupertinoColors.systemGrey6.resolveFrom(ctx),
+                            : AppColors.elevatedBackground(ctx),
                         borderRadius: BorderRadius.circular(10),
                         border: isSelected
                             ? Border.all(
@@ -628,7 +628,7 @@ class _CategoryListState extends State<_CategoryList> {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = AppLayout.of(context).hasSidebar;
+    final desktop = AppLayout.of(context).isDesktop;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: widget.itemCount,

@@ -128,6 +128,10 @@ class ProjectProvider with ChangeNotifier {
       for (final member in allMembers) {
         _members.putIfAbsent(member.projectId, () => []).add(member);
       }
+      for (final project in _projects) {
+        _tasks.putIfAbsent(project.id, () => []);
+        _members.putIfAbsent(project.id, () => []);
+      }
       await _refreshStats();
     } catch (e) {
       debugPrint('ProjectProvider loadData error: $e');
@@ -136,6 +140,11 @@ class ProjectProvider with ChangeNotifier {
   }
 
   Future<void> loadTasks(String projectId) async {
+    // The initial load already includes every project's tasks and members.
+    // Reopening a pane should not query SQLite or rebuild the whole dashboard.
+    if (_tasks.containsKey(projectId) && _members.containsKey(projectId)) {
+      return;
+    }
     try {
       _tasks[projectId] = await DatabaseHelper.instance.getTasks(projectId);
       _members[projectId] = await DatabaseHelper.instance.getProjectMembers(

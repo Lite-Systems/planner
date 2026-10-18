@@ -1,15 +1,12 @@
-import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:planner/core/utils/app_colors.dart';
-import 'package:planner/core/utils/app_layout.dart';
-import 'package:planner/core/utils/app_tokens.dart';
 import 'package:provider/provider.dart';
+
 import '../../../providers/settings_provider.dart';
+import 'dashboard_style.dart';
 
 class UsdRateWidget extends StatefulWidget {
   const UsdRateWidget({super.key});
-
   @override
   State<UsdRateWidget> createState() => _UsdRateWidgetState();
 }
@@ -19,189 +16,145 @@ class _UsdRateWidgetState extends State<UsdRateWidget> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settings = Provider.of<SettingsProvider>(context, listen: false);
-      if (settings.lastRatesUpdate.isEmpty) {
+      if (!mounted) return;
+      final settings = context.read<SettingsProvider>();
+      if (settings.lastRatesUpdate.isEmpty && !settings.isFetchingRates) {
         settings.fetchAndSaveRates();
       }
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = CupertinoTheme.brightnessOf(context) == Brightness.dark;
-
-    return Selector<SettingsProvider, (double, double, bool, String)>(
-      selector: (_, s) =>
-          (s.usdToEgp, s.usdToSar, s.isFetchingRates, s.lastRatesUpdate),
-      builder: (context, _, _) {
-        final settings = context.read<SettingsProvider>();
-        final card = Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: AppCard.container(context, radius: AppRadius.xl),
+  Widget build(BuildContext context) =>
+      Selector<SettingsProvider, (double, double, bool, String)>(
+        selector: (_, s) =>
+            (s.usdToEgp, s.usdToSar, s.isFetchingRates, s.lastRatesUpdate),
+        builder: (context, value, _) => DashboardPanel(
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Header Row ──────────────────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF10B981,
-                              ).withValues(alpha: 0.4),
-                              blurRadius: 4,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'usdRates'.tr(),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: CupertinoColors.systemGrey,
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: DashboardStyle.emerald,
+                      shape: BoxShape.circle,
+                    ),
                   ),
-
-                  // Refresh button with loading animation
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'usdRates'.tr(),
+                      style: DashboardStyle.text(
+                        context,
+                        size: 12,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                   CupertinoButton(
+                    key: const ValueKey('dashboard-refresh-rates'),
                     padding: EdgeInsets.zero,
-                    minimumSize: const Size(24, 24),
-                    onPressed: settings.isFetchingRates
+                    minimumSize: const Size(36, 36),
+                    onPressed: value.$3
                         ? null
-                        : () => settings.fetchAndSaveRates(),
-                    child: settings.isFetchingRates
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CupertinoActivityIndicator(radius: 7),
-                          )
-                        : const Icon(
+                        : context.read<SettingsProvider>().fetchAndSaveRates,
+                    child: value.$3
+                        ? const CupertinoActivityIndicator(radius: 8)
+                        : Icon(
                             CupertinoIcons.arrow_2_circlepath,
-                            size: 16,
+                            size: 17,
+                            color: DashboardStyle.muted(context),
+                            semanticLabel: 'dashboardRefreshRates'.tr(),
                           ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-
-              // ── Rates Row ───────────────────────────────────────────
+              const SizedBox(height: 6),
               Row(
                 children: [
-                  // USD to EGP Pill
                   Expanded(
-                    child: _buildRatePill(
-                      context,
-                      flag: '🇺🇸',
-                      base: '1 USD',
-                      targetFlag: '🇪🇬',
-                      rate: '${settings.usdToEgp.toStringAsFixed(2)} EGP',
-                    ),
+                    child: _RatePill(code: 'SAR', value: value.$2),
                   ),
                   const SizedBox(width: 10),
-                  // USD to SAR Pill
                   Expanded(
-                    child: _buildRatePill(
-                      context,
-                      flag: '🇺🇸',
-                      base: '1 USD',
-                      targetFlag: '🇸🇦',
-                      rate: '${settings.usdToSar.toStringAsFixed(2)} SAR',
-                    ),
+                    child: _RatePill(code: 'EGP', value: value.$1),
                   ),
                 ],
               ),
-
-              // ── Footer Last Updated ─────────────────────────────────
-              if (settings.lastRatesUpdate.isNotEmpty) ...[
+              if (value.$4.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  '${'lastUpdated'.tr()}: ${settings.lastRatesUpdate}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isDark
-                        ? CupertinoColors.systemGrey3
-                        : CupertinoColors.systemGrey,
+                  '${'lastUpdated'.tr()}: ${value.$4}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DashboardStyle.text(
+                    context,
+                    size: 10,
+                    color: DashboardStyle.muted(context),
                   ),
                 ),
               ],
             ],
           ),
-        );
-        if (AppLayout.of(context).hasSidebar) return card;
-        return card
-            .animate()
-            .fadeIn(duration: 400.ms)
-            .slideY(begin: 0.1, end: 0, curve: Curves.easeOutCubic);
-      },
-    );
-  }
+        ),
+      );
+}
 
-  Widget _buildRatePill(
-    BuildContext context, {
-    required String flag,
-    required String base,
-    required String targetFlag,
-    required String rate,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.elevatedBackground(context),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.separator(context), width: 0.5),
-      ),
+class _RatePill extends StatelessWidget {
+  const _RatePill({required this.code, required this.value});
+  final String code;
+  final double value;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: DashboardStyle.elevated(context),
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: DashboardStyle.border(context)),
+    ),
+    child: Directionality(
+      textDirection: TextDirection.ltr,
       child: Row(
         children: [
-          Text(flag, style: const TextStyle(fontSize: 13)),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              base,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.secondaryLabel(context),
-              ),
-            ),
+          const Icon(
+            CupertinoIcons.money_dollar_circle,
+            size: 22,
+            color: DashboardStyle.emerald,
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(
-              CupertinoIcons.right_chevron,
-              size: 10,
-              color: AppColors.secondaryLabel(context),
-            ),
-          ),
-          Text(targetFlag, style: const TextStyle(fontSize: 13)),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              rate,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.end,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '1 USD',
+                  style: DashboardStyle.text(
+                    context,
+                    size: 10,
+                    color: DashboardStyle.muted(context),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '$code ${value.toStringAsFixed(2)}',
+                    style: DashboardStyle.text(
+                      context,
+                      size: 12,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }

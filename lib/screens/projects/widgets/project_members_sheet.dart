@@ -1,3 +1,4 @@
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_colors.dart';
@@ -14,6 +15,7 @@ class ProjectMembersSheet extends StatelessWidget {
 
   static Future<void> show(BuildContext context, String projectId) {
     return showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (_) => ProjectMembersSheet(projectId: projectId),
     );
@@ -135,6 +137,7 @@ class ProjectMembersSheet extends StatelessWidget {
     ProjectMember member,
   ) async {
     final ok = await showCupertinoDialog<bool>(
+      useRootNavigator: false,
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
         title: Text('deleteMember'.tr()),
@@ -169,6 +172,7 @@ class ProjectMembersSheet extends StatelessWidget {
     var color = member?.color ?? AppColors.categoryPalette.first.toARGB32();
 
     await showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => CupertinoAlertDialog(
@@ -178,17 +182,20 @@ class ProjectMembersSheet extends StatelessWidget {
             child: Column(
               children: [
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: nameCtrl,
                   placeholder: 'memberName'.tr(),
                 ),
                 const SizedBox(height: 8),
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: phoneCtrl,
                   placeholder: 'memberPhone'.tr(),
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 8),
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: emailCtrl,
                   placeholder: 'memberEmail'.tr(),
                   keyboardType: TextInputType.emailAddress,

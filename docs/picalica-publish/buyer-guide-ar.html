@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>دليل المخطط الذكي — استخدام وتعديل — بيكاليكا</title>
+<style>
+:root { --ink:#1c2530; --muted:#5a6875; --line:#d9e2ea; --accent:#166485; --soft:#f2f7fa; }
+body { margin:0; font-family:"Almarai","Segoe UI",Tahoma,sans-serif; color:var(--ink); background:#fff; line-height:1.9; font-size:16px; }
+header { background:var(--soft); border-bottom:4px solid var(--accent); padding:26px 34px; box-sizing:border-box; }
+header h1 { margin:0 0 6px; font-size:28px; }
+header p { margin:0; color:var(--muted); }
+main { max-width:900px; margin:0 auto; padding:24px 34px; }
+h2 { color:var(--accent); border-bottom:2px solid var(--line); padding-bottom:6px; margin-top:34px; font-size:21px; }
+ul, ol { padding-right:22px; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th, td { border:1px solid var(--line); padding:8px 11px; text-align:right; }
+th { background:var(--soft); }
+code { background:var(--soft); border-radius:5px; padding:2px 6px; direction:ltr; unicode-bidi:embed; font-family:monospace; font-size:14px; }
+pre { background:#12212e; color:#dcebf5; padding:14px 16px; border-radius:10px; direction:ltr; text-align:left; overflow-x:auto; font-size:14px; line-height:1.7; }
+.note { background:#fff8e6; border:1px solid #ecd9a0; border-radius:10px; padding:10px 14px; margin:12px 0; }
+.ok { background:#ecf9f1; border:1px solid #bfe6cf; border-radius:10px; padding:10px 14px; margin:12px 0; }
+footer { color:var(--muted); border-top:2px solid var(--line); margin-top:38px; padding:14px 0; font-size:14px; }
+.kbd { direction:ltr; unicode-bidi:embed; font-family:monospace; background:#eef3f7; border:1px solid var(--line); border-bottom-width:3px; border-radius:6px; padding:1px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>المخطط الذكي (Smart Planner) — دليل الاستخدام والتعديل</h1>
+  <p>الإصدار 1.0.0+8 · شيفرة Flutter كاملة · عربي/إنجليزي · النشر عبر بيكاليكا.</p>
+</header>
+<main>
+<h2>1) نظرة سريعة</h2>
+<p>المخطط الذكي تطبيق واحد لإدارة عملك المستقل: مشاريع ومهام، وتتبع وقت، وإيرادات ومصروفات، ومحافظ وفواتير PDF. البيانات تُخزن محلياً في قاعدة SQLite على جهاز المستخدم.</p>
+<p>لا حاجة لسيرفر أو حساب سحابي، والإنترنت ليس شرطاً للعمل؛ يطلبه التطبيق لوظيفة اختيارية واحدة هي تحديث أسعار صرف الدولار.</p>
+
+<h2>2) المتطلبات</h2>
+<h3>قبل البناء والتشغيل</h3>
+<table>
+  <tr><th>المتطلب</th><th>تفصيل</th></tr>
+  <tr><td>Flutter SDK</td><td>الأقرب للمشروع إصدار 3.47.2 (أو أحدث مستقر). ملف <code>.fvmrc</code> يحدد الإصدار المستخدم في التطوير.</td></tr>
+  <tr><td>Android</td><td>Android SDK وJDK حديثان. الحد الأدنى في المشروع API 24، والمستهدف API 36.</td></tr>
+  <tr><td>iOS</td><td>macOS مع Xcode، والحد الأدنى لنظام الجهاز iOS 15.0.</td></tr>
+  <tr><td>macOS</td><td>الحد الأدنى macOS 15.0.</td></tr>
+  <tr><td>Windows / Linux</td><td>أدوات البناء القياسية. قاعدة البيانات تعمل هنا عبر <code>sqflite_common_ffi</code>.</td></tr>
+</table>
+
+<h3>أوامر التشغيل والفحص</h3>
+<pre><code>flutter pub get
+flutter run              # جهاز متصل أو محاكي
+flutter analyze          # فحص سكوني للشيفرة
+flutter test             # 20 اختباراً في 9 ملفات</code></pre>
+
+<h3>أوامر بناء إصدارات النشر</h3>
+<pre><code>flutter build apk --release          # Android
+flutter build appbundle --release    # حزمة متجر Play
+flutter build ios --release          # iOS (التوقيع من Xcode)
+flutter build web --release          # نسخة ويب
+flutter build macos --release        # macOS
+flutter build windows --release      # Windows
+flutter build linux --release        # Linux</code></pre>
+
+<div class="note">التوقيع للنشر يظل مسؤوليتك: توقيع Apple يتطلب حساب مطور، وتوقيع Android يتطلب keystore خاصاً بك. هذا الدليل يشرح التشغيل والاستخدام، وخطوات النشر على المتاجر خارج نطاقه.</div>
+
+<h2>3) أول تشغيل</h2>
+<ol>
+  <li>يفتح التطبيق على شاشة البدء، ثم تظهر اللوحة الرئيسية.</li>
+  <li>من الإعدادات اختر اللغة: العربية (الافتراضية) أو الإنجليزية، مع إعادة تحميل الواجهة.</li>
+  <li>اختياري: فعّل قفل التطبيق ببصمة أو Face ID أو رمز قفل الجهاز.</li>
+  <li>اختياري: فعّل إخفاء المبالغ بوضع الخصوصية، واختر عملة العرض لكل قسم.</li>
+  <li>التطبيق لا يطلب تسجيلاً ولا حساباً؛ بياناتك قاعدة محلية فقط.</li>
+</ol>
+
+<h3>الأذونات التي يطلبها النظام</h3>
+<table>
+  <tr><th>الإذن</th><th>استخدامه</th></tr>
+  <tr><td>الإشعارات</td><td>تذكير بموعد المهمة.</td></tr>
+  <tr><td>الميكروفون</td><td>إدخال المهام بالصوت وتحليلها.</td></tr>
+  <tr><td>بصمة / وجه</td><td>قفل التطبيق (اختياري).</td></tr>
+  <tr><td>الصور</td><td>غلاف المشروع ومرفقات المهام.</td></tr>
+  <tr><td>الإنترنت</td><td>اختياري: تحديث أسعار الصرف فقط.</td></tr>
+</table>
+
+<h2>4) الاستخدام اليومي</h2>
+
+<h3>المشاريع</h3>
+<ul>
+  <li>أضف مشروعاً باسم ووصف وعميل وتاريخ انتهاء، واختر غلافاً من الصور أو الكاميرا أو أيقونة جاهزة.</li>
+  <li>داخل تفاصيل المشروع: المهام، وأعضاء الفريق، والإجماليات (التكلفة والمدفوع والمتبقي).</li>
+  <li>يمكن طلب فاتورة المشروع PDF: معاينة أو طباعة أو مشاركة أو حفظ.</li>
+</ul>
+
+<h3>المهام</h3>
+<ul>
+  <li>لكل مهمة: نوع (ميزة جديدة / إصلاح / تحسين) وحالة (للتنفيذ / جارٍ / منتهية).</li>
+  <li>بيانات إضافية: التكلفة وعملتها، وتاريخا البدء والنهاية، ومهام فرعية، ومرفقات صور وملفات.</li>
+  <li>عند وضع الدفع يُسجل الإيراد تلقائياً، وإلغاؤه يزيل السجل.</li>
+  <li>المهام المنتهية والمدفوعة قابلة للأرشفة، والاستعادة ممكنة لاحقاً.</li>
+</ul>
+
+<h3>تتبع الوقت</h3>
+<ul>
+  <li>زر المؤقت داخل المهمة يبدأ العد أو يوقفه.</li>
+  <li>التكلفة تُحسب من الوقت المتراكم وسعر الساعة الافتراضي.</li>
+  <li>تعديل الوقت يدوياً ممكن مع تنبيه عند الكتابة فوق الوقت المسجل.</li>
+  <li>التذكير تنبيه محلي عند موعد البدء، دون سيرفر.</li>
+</ul>
+
+<h3>الإيرادات والمصروفات</h3>
+<ul>
+  <li>قائمان منفصلان، مع تصفية بالفئة والشهر، وعناوين إجمالية.</li>
+  <li>الفئات قابلة للإضافة والتعديل مع لون وأيقونة، وممنوع حذف فئة مستعملة.</li>
+  <li>المصروفات تظهر في رسم بياني دائري.</li>
+</ul>
+
+<h3>المحافظ والعملات</h3>
+<ul>
+  <li>ثلاثة أنواع للمحافظ: نقدية، وفيزا، وبنك.</li>
+  <li>الرصيد الحي = الرصيد الابتدائي + الدخل − المصروف.</li>
+  <li>ممنوع حذف محفظة مقترنة بسجل إيراد أو مصروف.</li>
+  <li>ثلاث عملات: جنيه ودولار وريال، مع تحديث الأسعار من <code>open.er-api.com</code>.</li>
+  <li>بدون إنترنت: يعمل التطبيق بآخر سعر محفوظ.</li>
+</ul>
+
+<h3>الإدخال الصوتي</h3>
+<ul>
+  <li>زر الميكروفون يفتح نافذة تسجيل مع موجة صوت متحركة ونص حي.</li>
+  <li>التحليل ثنائي اللغة للمهام الفرعية والفواصل، ثم معاينة قابلة للتعديل قبل الحفظ.</li>
+  <li>التعرف على اللغة محلي من النظام، بالعربية أو الإنجليزية حسب إعدادات الجهاز.</li>
+</ul>
+
+
+<h2>5) التخصيص</h2>
+
+<h3>الألوان والخط</h3>
+<ul>
+  <li>السمات في <code>lib/core/utils/app_thems.dart</code>: وضع فاتح ووضع داكن.</li>
+  <li>رموز التصميم في <code>app_tokens.dart</code> و<code>app_colors.dart</code>.</li>
+  <li>الخط العربي Almarai في <code>assets/fonts/</code>، ويُعرّف في <code>pubspec.yaml</code>.</li>
+</ul>
+
+<h3>بنية الشيفرة</h3>
+<ul>
+  <li>الشاشات في <code>lib/screens/</code>: الرئيسية، والمشاريع، والمهام، والإيرادات، والمصروفات، والإعدادات.</li>
+  <li>الخدمات في <code>lib/core/services/</code>: قاعدة البيانات، والنسخ الاحتياطي، وPDF، والإشعارات، والعملات، والقفل.</li>
+  <li>النماذج والحالة في <code>lib/models/</code> و<code>lib/providers/</code>.</li>
+</ul>
+
+<h3>الفاتورة PDF</h3>
+<p>قالب الفاتورة في <code>lib/core/services/pdf_service.dart</code>. من الإعدادات تحدد محتوى الفاتورة: تكلفة الوقت، ووقت المهمة، ونوع المهمة، والمهام الفرعية.</p>
+
+<h3>قائمة المهام المجمّعة</h3>
+<p>وحدة اختيارية تعرض مهام كل المشاريع بترتيب مواعيد البدء. تُفعّل من الإعدادات، ولا تحتاج تعديل شيفرة.</p>
+
+<h2>6) الإشعارات وتحديث التطبيق</h2>
+<p>إشعارات التطبيق محلية بالكامل: تذكير بمواعيد المهام عبر <code>flutter_local_notifications</code> دون أي خدمة خارجية، ولذلك لا يحتاج التطبيق إلى Firebase أو حساب سحابي.</p>
+<p>تنبيه التحديث يظهر عبر مكتبة upgrader المستدعاة في <code>main.dart</code>. لربطه بمتجرك، أضف معرّفات المتاجر في إعدادات المكتبة.</p>
+
+<h2>7) الحدود المعروفة</h2>
+<ul>
+  <li>لا مزامنة سحابية، ولا تشفير لقاعدة البيانات داخل التطبيق.</li>
+  <li>التعرف على الكلام يعتمد خدمة النظام، فجودة التحليل تختلف بين الأجهزة.</li>
+  <li>تنبيه التحديث داخل التطبيق يعتمد على ربط معرّفات متجرك في إعدادات مكتبة upgrader.</li>
+  <li>النسخ الاحتياطي ملف واحد لقاعدة البيانات، دون مزامنة تلقائية مع السحابة.</li>
+</ul>
+
+<h2>8) الاعتمادات</h2>
+<table>
+  <tr><th>الاعتماد</th><th>الترخيص والمصدر</th></tr>
+  <tr><td>Flutter</td><td>BSD — flutter.dev</td></tr>
+  <tr><td>خط Almarai</td><td>SIL OFL 1.1 — متاح على Google Fonts، والرخصة مضمّنة داخل ملف الخط.</td></tr>
+  <tr><td>مكتبات Dart (provider وeasy_localization وsqflite وfl_chart وpdf وprinting وسواها)</td><td>تراخيص MIT/BSD القياسية — إصداراتها المسجلة في <code>pubspec.lock</code>.</td></tr>
+  <tr><td>خدمة أسعار الصرف</td><td><code>open.er-api.com</code> — خدمة عامة مجانية.</td></tr>
+</table>
+
+<h2>9) الدعم</h2>
+<p>يمكن للمشتري مراسلة البائع عبر منصة بيكاليكا طلباً للمساعدة خلال أسبوع من شراء المنتج. الرسائل تُرد عبر منصات المراسلة الرسمية للمنصة.</p>
+
+<footer>أُعد هذا الدليل بتاريخ 2026-10-18 للإصدار 1.0.0+8. وثيقته مرافقة لحزمة ZIP، وهو مرجع للاستخدام والتعديل معاً.</footer>
+
+</main>
+</body>
+</html>

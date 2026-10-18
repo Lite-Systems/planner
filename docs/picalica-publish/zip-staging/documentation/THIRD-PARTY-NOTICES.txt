@@ -1,0 +1,22 @@
+ملاحظات الأطراف الثالثة (Third-party notices)
+مع المخطط الذكي (Smart Planner) — الإصدار 1.0.0+8
+
+الخطوط:
+- Almarai (Almarai-Regular.ttf)
+  الترخيص: SIL Open Font License 1.1
+  المصدر: مستودع Almarai الرسمي على Google Fonts
+  الرخصة محفوظة نصيًا داخل ملف الخط نفسه (حقل License في جدول الأسماء)، وهي تسمح
+  بإعادة التوزيع والاستخدام التجاري مع بقية الشروط. عند إعادة توزيع الخط لا تعلل
+  عن بيعه إلا وفق شروط OFL.
+
+خدمات خارجية اختيارية:
+- أسعار الصرف: https://open.er-api.com — خدمة عامة مجانية تُستدعى فقط للتحديث اليدوي/التلقائي
+  للأسعار ويمكن العمل دونها (يحتفظ التطبيق بآخر سعر محفوظ).
+- لا يستخدم التطبيق أي خدمة سحابية أخرى.
+
+مكتبات Dart:
+- جميع التبعيات مفتوحة المصدر برخص MIT/BSD وأمثالها، وقائمة الإصدارات المقفلة في pubspec.lock:
+  flutter, provider, easy_localization, sqflite, sqflite_common_ffi, path_provider,
+  path, intl, fl_chart, local_auth, pdf, printing, uuid, shared_preferences,
+  flutter_animate, speech_to_text, flutter_local_notifications, timezone,
+  image_picker, share_plus, file_picker, upgrader, font_awesome_flutter, cupertino_icons.

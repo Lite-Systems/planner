@@ -2,15 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'app_tokens.dart';
 
 /// Base font family used across the app.
-const _fontFamily = 'Almarai';
+const _fontFamily = AppText.family;
 
 /// Creates a TextStyle with `inherit: false` (required by CupertinoTextThemeData)
 /// so Flutter can interpolate between light/dark theme styles without crashing.
 TextStyle _t({
   required Color color,
-  double fontSize = 17,
+  double fontSize = 15,
   FontWeight fontWeight = FontWeight.w400,
 }) => TextStyle(
   fontFamily: _fontFamily,
@@ -56,8 +57,8 @@ class AppThems {
       ),
       primaryColor: AppColors.primaryColor,
       primaryContrastingColor: Colors.white,
-      barBackgroundColor: const Color(0xFFF9FAFB),
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      barBackgroundColor: AppColors.surfaceAlt,
+      scaffoldBackgroundColor: AppColors.surfaceAlt,
       brightness: Brightness.light,
       applyThemeToAll: true,
     );
@@ -96,7 +97,7 @@ class AppThems {
       ),
       primaryColor: AppColors.primaryColor,
       primaryContrastingColor: Colors.white,
-      barBackgroundColor: const Color(0xFF1C1C1E),
+      barBackgroundColor: AppColors.surfaceDark,
       scaffoldBackgroundColor: AppColors.surfaceDark,
       brightness: Brightness.dark,
       applyThemeToAll: true,

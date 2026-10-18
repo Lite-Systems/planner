@@ -1,5 +1,10 @@
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/utils/app_tokens.dart';
+import 'package:planner/core/widgets/app_list_section.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:planner/core/utils/app_layout.dart';
 import 'package:planner/core/utils/no_animation_route.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -9,6 +14,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/services/database_backup_service.dart';
 import '../../core/services/database_helper.dart';
+import '../../core/services/macos_widget_service.dart';
 import 'payment_methods_screen.dart';
 import 'archive_screen.dart';
 import '../../providers/wallet_provider.dart';
@@ -21,12 +27,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text('settings'.tr()),
-        automaticBackgroundVisibility: false,
-        enableBackgroundFilterBlur: false,
-        transitionBetweenRoutes: false,
-      ),
+      navigationBar: AppNavigationBar(middle: Text('settings'.tr())),
       child: SafeArea(
         child: AppLayout.constrain(
           const RepaintBoundary(child: _SettingsList()),
@@ -43,7 +44,7 @@ class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showDesktop =
-        AppLayout.of(context).hasSidebar ||
+        AppLayout.of(context).isDesktop ||
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
@@ -57,7 +58,7 @@ class _SettingsList extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           children: [
             // Language Selection
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: EdgeInsets.all(8),
               children: [
                 Padding(
@@ -65,14 +66,19 @@ class _SettingsList extends StatelessWidget {
                     vertical: 8.0,
                     horizontal: 16.0,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       Text(
                         'language'.tr(),
                         style: CupertinoTheme.of(context).textTheme.textStyle,
                       ),
                       CupertinoSlidingSegmentedControl<String>(
+                        backgroundColor: AppColors.elevatedBackground(context),
+                        thumbColor: AppColors.cardBackground(context),
                         groupValue: context.locale.languageCode,
                         children: {
                           'en': Text(
@@ -110,6 +116,7 @@ class _SettingsList extends StatelessWidget {
                           if (value != null &&
                               value != context.locale.languageCode) {
                             await showCupertinoDialog(
+                              useRootNavigator: false,
                               context: context,
                               builder: (_) => CupertinoAlertDialog(
                                 title: Text('changeLanguage'.tr()),
@@ -168,7 +175,7 @@ class _SettingsList extends StatelessWidget {
 
             const SizedBox(height: 16),
             // Currency Selection
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: EdgeInsets.all(8),
               children: [
                 Padding(
@@ -176,14 +183,19 @@ class _SettingsList extends StatelessWidget {
                     vertical: 8.0,
                     horizontal: 16.0,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
                       Text(
                         'currency'.tr(),
                         style: CupertinoTheme.of(context).textTheme.textStyle,
                       ),
                       CupertinoSlidingSegmentedControl<String>(
+                        backgroundColor: AppColors.elevatedBackground(context),
+                        thumbColor: AppColors.cardBackground(context),
                         groupValue: settings.currency,
                         children: {
                           for (final code in ['EGP', 'USD', 'SAR'])
@@ -215,7 +227,7 @@ class _SettingsList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Expenses Currency Selection
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: EdgeInsets.all(8),
               children: [
                 Padding(
@@ -254,6 +266,10 @@ class _SettingsList extends StatelessWidget {
                             ),
                           ),
                           CupertinoSlidingSegmentedControl<String>(
+                            backgroundColor: AppColors.elevatedBackground(
+                              context,
+                            ),
+                            thumbColor: AppColors.cardBackground(context),
                             groupValue: settings.expensesCurrency,
                             children: {
                               for (final code in ['USD', 'EGP', 'SAR'])
@@ -288,7 +304,7 @@ class _SettingsList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Hour Cost
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: EdgeInsets.all(8),
               children: [
                 CupertinoListTile(
@@ -306,12 +322,17 @@ class _SettingsList extends StatelessWidget {
                       text: settings.hourCost.toString(),
                     );
                     showCupertinoDialog(
+                      useRootNavigator: false,
                       context: context,
                       builder: (context) => CupertinoAlertDialog(
                         title: Text('editHourCost'.tr()),
                         content: Padding(
                           padding: const EdgeInsets.only(top: 16.0),
                           child: CupertinoTextField(
+                            decoration: AppCard.container(
+                              context,
+                              radius: AppRadius.md,
+                            ),
                             controller: controller,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
@@ -343,13 +364,14 @@ class _SettingsList extends StatelessWidget {
 
             const SizedBox(height: 16),
             // App lock
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: EdgeInsets.all(8),
               children: [
                 CupertinoListTile(
                   title: Text('lockApp'.tr()),
                   subtitle: Text('lockAppSubtitle'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.isBiometricEnabled,
                     onChanged: (value) {
                       settings.setBiometricEnabled(value);
@@ -360,6 +382,7 @@ class _SettingsList extends StatelessWidget {
                   title: Text('hideAmounts'.tr()),
                   subtitle: Text('hideAmountsSubtitle'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.hideAmounts,
                     onChanged: (value) {
                       settings.setHideAmounts(value);
@@ -371,7 +394,7 @@ class _SettingsList extends StatelessWidget {
 
             const SizedBox(height: 16),
             // Printing Settings
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               header: Text(
                 'printingSettings'.tr(),
                 style: CupertinoTheme.of(context).textTheme.textStyle,
@@ -381,6 +404,7 @@ class _SettingsList extends StatelessWidget {
                 CupertinoListTile(
                   title: Text('showHourCostInPrint'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.showHourCostInPrint,
                     onChanged: (value) {
                       settings.setShowHourCostInPrint(value);
@@ -390,6 +414,7 @@ class _SettingsList extends StatelessWidget {
                 CupertinoListTile(
                   title: Text('showTaskTimeInPrint'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.showTaskTimeInPrint,
                     onChanged: (value) {
                       settings.setShowTaskTimeInPrint(value);
@@ -399,6 +424,7 @@ class _SettingsList extends StatelessWidget {
                 CupertinoListTile(
                   title: Text('showTaskTypeInPrint'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.showTaskTypeInPrint,
                     onChanged: (value) {
                       settings.setShowTaskTypeInPrint(value);
@@ -408,6 +434,7 @@ class _SettingsList extends StatelessWidget {
                 CupertinoListTile(
                   title: Text('showSubtasksInPrint'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.showSubtasksInPrint,
                     onChanged: (value) {
                       settings.setShowSubtasksInPrint(value);
@@ -419,7 +446,7 @@ class _SettingsList extends StatelessWidget {
 
             const SizedBox(height: 16),
             // ── Modules ──────────────────────────────────────────────
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               header: Text(
                 'modules'.tr(),
                 style: CupertinoTheme.of(context).textTheme.textStyle,
@@ -435,6 +462,7 @@ class _SettingsList extends StatelessWidget {
                   title: Text('expensesModule'.tr()),
                   subtitle: Text('expensesModuleSubtitle'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.isExpensesEnabled,
                     onChanged: (value) {
                       settings.setExpensesEnabled(value);
@@ -450,6 +478,7 @@ class _SettingsList extends StatelessWidget {
                   title: Text('todoModule'.tr()),
                   subtitle: Text('todoModuleSubtitle'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.isTodosEnabled,
                     onChanged: (value) {
                       settings.setTodosEnabled(value);
@@ -460,7 +489,7 @@ class _SettingsList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // ── Dark Mode ─────────────────────────────────────────────
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: const EdgeInsets.all(8),
               children: [
                 CupertinoListTile(
@@ -470,6 +499,7 @@ class _SettingsList extends StatelessWidget {
                   ),
                   title: Text('darkMode'.tr()),
                   trailing: CupertinoSwitch(
+                    activeTrackColor: AppColors.primary,
                     value: settings.isDarkMode,
                     onChanged: (value) {
                       settings.setDarkMode(value);
@@ -480,7 +510,7 @@ class _SettingsList extends StatelessWidget {
             ),
             if (showDesktop) ...[
               const SizedBox(height: 16),
-              CupertinoListSection.insetGrouped(
+              AppListSection(
                 header: Text(
                   'desktopSettings'.tr(),
                   style: CupertinoTheme.of(context).textTheme.textStyle,
@@ -488,17 +518,10 @@ class _SettingsList extends StatelessWidget {
                 margin: const EdgeInsets.all(8),
                 children: [
                   CupertinoListTile(
-                    title: Text('compactSidebar'.tr()),
-                    subtitle: Text('compactSidebarSubtitle'.tr()),
-                    trailing: CupertinoSwitch(
-                      value: settings.compactSidebar,
-                      onChanged: settings.setCompactSidebar,
-                    ),
-                  ),
-                  CupertinoListTile(
                     title: Text('compactDensity'.tr()),
                     subtitle: Text('compactDensitySubtitle'.tr()),
                     trailing: CupertinoSwitch(
+                      activeTrackColor: AppColors.primary,
                       value: settings.compactDensity,
                       onChanged: settings.setCompactDensity,
                     ),
@@ -507,6 +530,7 @@ class _SettingsList extends StatelessWidget {
                     title: Text('rememberLastSection'.tr()),
                     subtitle: Text('rememberLastSectionSubtitle'.tr()),
                     trailing: CupertinoSwitch(
+                      activeTrackColor: AppColors.primary,
                       value: settings.rememberLastSection,
                       onChanged: settings.setRememberLastSection,
                     ),
@@ -515,10 +539,87 @@ class _SettingsList extends StatelessWidget {
                     title: Text('keyboardShortcuts'.tr()),
                     subtitle: Text('keyboardShortcutsSubtitle'.tr()),
                     trailing: CupertinoSwitch(
+                      activeTrackColor: AppColors.primary,
                       value: settings.keyboardShortcuts,
                       onChanged: settings.setKeyboardShortcuts,
                     ),
                   ),
+                  if (MacosWidgetService.isSupported) ...[
+                    CupertinoListTile(
+                      title: Text('macosWidget'.tr()),
+                      subtitle: Text('macosWidgetSubtitle'.tr()),
+                      trailing: CupertinoSwitch(
+                        activeTrackColor: AppColors.primary,
+                        value: settings.macosWidgetEnabled,
+                        onChanged: (value) async {
+                          try {
+                            await context.read<MacosWidgetService>().setEnabled(
+                              value,
+                            );
+                          } catch (error) {
+                            if (!context.mounted) return;
+                            final messageKey = switch (error) {
+                              PlatformException(
+                                code: 'widget_app_group_unavailable',
+                              ) =>
+                                'macosWidgetUnavailable',
+                              PlatformException(
+                                code: 'widget_extension_missing',
+                              ) =>
+                                'macosWidgetExtensionMissing',
+                              _ => 'macosWidgetEnableFailed',
+                            };
+                            await showCupertinoDialog<void>(
+                              useRootNavigator: false,
+                              context: context,
+                              builder: (dialogContext) => CupertinoAlertDialog(
+                                title: Text('macosWidget'.tr()),
+                                content: Text(messageKey.tr()),
+                                actions: [
+                                  CupertinoDialogAction(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext),
+                                    child: Text('ok'.tr()),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    CupertinoListTile(
+                      title: Text('addMacosWidget'.tr()),
+                      trailing: const CupertinoListTileChevron(),
+                      onTap: () => showCupertinoDialog<void>(
+                        useRootNavigator: false,
+                        context: context,
+                        builder: (dialogContext) => CupertinoAlertDialog(
+                          title: Text('addMacosWidget'.tr()),
+                          content: Text('macosWidgetInstructions'.tr()),
+                          actions: [
+                            CupertinoDialogAction(
+                              onPressed: () => Navigator.pop(dialogContext),
+                              child: Text('ok'.tr()),
+                            ),
+                            CupertinoDialogAction(
+                              child: Text('openMacosWidgetSettings'.tr()),
+                              onPressed: () async {
+                                Navigator.pop(dialogContext);
+                                try {
+                                  await context
+                                      .read<MacosWidgetService>()
+                                      .openSettings();
+                                } catch (_) {
+                                  // The dialog also contains the complete manual steps.
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -565,7 +666,7 @@ class _SettingsList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Database Backup
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               header: Text(
                 'databaseBackup'.tr(),
                 style: CupertinoTheme.of(context).textTheme.textStyle,
@@ -575,7 +676,7 @@ class _SettingsList extends StatelessWidget {
                 CupertinoListTile(
                   leading: const FaIcon(
                     FontAwesomeIcons.cloudArrowUp,
-                    color: CupertinoColors.systemBlue,
+                    color: AppColors.primary,
                     size: 20,
                   ),
                   title: Text('exportDatabase'.tr()),
@@ -586,6 +687,7 @@ class _SettingsList extends StatelessWidget {
                       await DatabaseBackupService.createAndShareBackup();
                       if (context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -616,6 +718,7 @@ class _SettingsList extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -663,6 +766,7 @@ class _SettingsList extends StatelessWidget {
                           await DatabaseBackupService.saveBackupToStorage();
                       if (saved && context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -693,6 +797,7 @@ class _SettingsList extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -740,6 +845,7 @@ class _SettingsList extends StatelessWidget {
                           await DatabaseBackupService.pickAndRestoreBackup();
                       if (restored && context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -773,6 +879,7 @@ class _SettingsList extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         showCupertinoDialog(
+                          useRootNavigator: false,
                           context: context,
                           builder: (context) => CupertinoAlertDialog(
                             title: Text(
@@ -809,7 +916,7 @@ class _SettingsList extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             // Reset Database
-            CupertinoListSection.insetGrouped(
+            AppListSection(
               margin: const EdgeInsets.all(8),
               children: [
                 CupertinoListTile(
@@ -825,6 +932,7 @@ class _SettingsList extends StatelessWidget {
                   subtitle: Text('resetDatabaseSubtitle'.tr()),
                   onTap: () {
                     showCupertinoDialog(
+                      useRootNavigator: false,
                       context: context,
                       builder: (context) => CupertinoAlertDialog(
                         title: Text(

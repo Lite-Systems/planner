@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/no_animation_route.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/utils/app_layout.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../providers/settings_provider.dart';
 import '../../core/services/biometric_service.dart';
 import '../shell/app_shell.dart';
@@ -65,77 +66,46 @@ class _AuthScreenState extends State<AuthScreen> {
         }
 
         return CupertinoPageScaffold(
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.topRight,
-                colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
-              ),
-            ),
-            child: SafeArea(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    FaIcon(
-                          FontAwesomeIcons.shield,
-                          size: 100,
-                          color: CupertinoColors.white,
-                        )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .scale(
-                          duration: const Duration(milliseconds: 1500),
-                          begin: const Offset(1.0, 1.0),
-                          end: const Offset(1.1, 1.1),
-                          curve: Curves.easeInOut,
-                        )
-                        .then()
-                        .scale(
-                          duration: const Duration(milliseconds: 1500),
-                          begin: const Offset(1.1, 1.1),
-                          end: const Offset(1.0, 1.0),
-                          curve: Curves.easeInOut,
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: AppLayout.constrain(
+                  Container(
+                    padding: const EdgeInsets.all(28),
+                    decoration: AppCard.container(context),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          CupertinoIcons.lock_shield,
+                          size: 44,
+                          color: AppColors.primary,
                         ),
-                    const SizedBox(height: 40),
-                    Text(
-                      'welcomeBack'.tr(),
-                      style: CupertinoTheme.of(context)
-                          .textTheme
-                          .navLargeTitleTextStyle
-                          .copyWith(
-                            color: CupertinoColors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'pleaseAuthenticate'.tr(),
-                      style: CupertinoTheme.of(context).textTheme.textStyle
-                          .copyWith(
-                            color: CupertinoColors.white.withValues(alpha: 0.9),
-                            fontSize: 16,
-                          ),
-                    ),
-                    const SizedBox(height: 60),
-                    if (!_isLoading)
-                      CupertinoButton.filled(
-                        onPressed: _checkAuth,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const FaIcon(FontAwesomeIcons.lockOpen, size: 18),
-                            const SizedBox(width: 8),
-                            Text('unlock'.tr()),
-                          ],
+                        const SizedBox(height: 24),
+                        Text(
+                          'welcomeBack'.tr(),
+                          textAlign: TextAlign.center,
+                          style: AppText.display(context),
                         ),
-                      )
-                    else
-                      const CupertinoActivityIndicator(
-                        radius: 20,
-                        color: CupertinoColors.white,
-                      ),
-                  ],
+                        const SizedBox(height: 12),
+                        Text(
+                          'pleaseAuthenticate'.tr(),
+                          textAlign: TextAlign.center,
+                          style: AppText.bodySecondary(context),
+                        ),
+                        const SizedBox(height: 28),
+                        if (_isLoading)
+                          const CupertinoActivityIndicator(radius: 12)
+                        else
+                          CupertinoButton.filled(
+                            onPressed: _checkAuth,
+                            child: Text('unlock'.tr()),
+                          ),
+                      ],
+                    ),
+                  ),
+                  maxWidth: 440,
                 ),
               ),
             ),

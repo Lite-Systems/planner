@@ -1,4 +1,4 @@
-package com.hany.smartplanner
+package com.lite.smartplanner
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

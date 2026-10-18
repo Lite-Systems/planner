@@ -1,3 +1,4 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_colors.dart';
 import 'package:planner/core/utils/app_layout.dart';
@@ -22,6 +23,7 @@ class ProjectsScreen extends StatefulWidget {
 
 class _ProjectsScreenState extends State<ProjectsScreen> {
   late final TextEditingController _searchController;
+  final ScrollController _scrollController = ScrollController();
   String? _selectedId;
   String _searchQuery = '';
   String _statusFilter = 'all';
@@ -37,6 +39,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -99,6 +102,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     final list = projects.isEmpty
         ? Center(child: Text('noProjectsYet'.tr()))
         : ListView.builder(
+            controller: _scrollController,
+            primary: false,
             padding: const EdgeInsets.only(bottom: 24),
             itemCount: projects.length,
             itemBuilder: (context, index) {
@@ -227,6 +232,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                   ),
                   const SizedBox(height: 12),
                   CupertinoSlidingSegmentedControl<String>(
+                    backgroundColor: AppColors.elevatedBackground(context),
+                    thumbColor: AppColors.cardBackground(context),
                     groupValue: _statusFilter,
                     children: {
                       'all': Text('allProjects'.tr()),
@@ -250,6 +257,8 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                         ),
                       ),
                       CupertinoSlidingSegmentedControl<String>(
+                        backgroundColor: AppColors.elevatedBackground(context),
+                        thumbColor: AppColors.cardBackground(context),
                         groupValue: _sortOrder,
                         children: {
                           'name': Text('nameLabel'.tr()),
@@ -283,7 +292,7 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
     return CupertinoPageScaffold(
       navigationBar: split
           ? null
-          : CupertinoNavigationBar(
+          : AppNavigationBar(
               middle: Text('projects'.tr()),
               trailing: CupertinoButton(
                 padding: EdgeInsets.zero,

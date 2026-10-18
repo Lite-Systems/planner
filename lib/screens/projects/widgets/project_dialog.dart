@@ -1,3 +1,5 @@
+import 'package:planner/core/utils/app_tokens.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -43,9 +45,10 @@ class ProjectDialog {
     var icon = project?.icon ?? _projectIcons.first;
 
     showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (context) => CupertinoPageScaffold(
-        navigationBar: CupertinoNavigationBar(
+        navigationBar: AppNavigationBar(
           middle: Text(
             project == null ? 'addProject'.tr() : 'editProject'.tr(),
           ),
@@ -102,6 +105,8 @@ class ProjectDialog {
               padding: const EdgeInsets.all(16),
               children: [
                 CupertinoSlidingSegmentedControl<String>(
+                  backgroundColor: AppColors.elevatedBackground(context),
+                  thumbColor: AppColors.cardBackground(context),
                   groupValue: coverType,
                   children: {
                     Project.coverImage: Padding(
@@ -144,18 +149,21 @@ class ProjectDialog {
                   ),
                 const SizedBox(height: 16),
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: nameController,
                   placeholder: 'projectName'.tr(),
                   padding: const EdgeInsets.all(12),
                 ),
                 const SizedBox(height: 16),
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: customerController,
                   placeholder: 'projectCustomer'.tr(),
                   padding: const EdgeInsets.all(12),
                 ),
                 const SizedBox(height: 16),
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: descriptionController,
                   placeholder: 'description'.tr(),
                   padding: const EdgeInsets.all(12),
@@ -184,9 +192,9 @@ class _ImagePickerBox extends StatelessWidget {
       child: Container(
         height: 200,
         decoration: BoxDecoration(
-          color: CupertinoColors.systemGrey6,
+          color: AppColors.elevatedBackground(context),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: CupertinoColors.systemGrey4),
+          border: Border.all(color: AppColors.separator(context)),
         ),
         child: imagePath != null
             ? LayoutBuilder(
@@ -268,7 +276,7 @@ class _IconPicker extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: selected
                         ? AppColors.primary
-                        : CupertinoColors.systemGrey5,
+                        : AppColors.elevatedBackground(context),
                     shape: BoxShape.circle,
                   ),
                   child: FaIcon(

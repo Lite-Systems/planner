@@ -2,10 +2,10 @@ import 'package:flutter/cupertino.dart';
 
 class AppColors {
   // Primary brand
-  static const Color primary = Color(0xFFF08010);
+  static const Color primary = Color(0xFFF97316);
   static const Color primaryLight = Color(0xFFFFB347);
   static const Color primaryDark = Color(0xFFC06000);
-  static const Color primaryColor = Color.fromARGB(255, 240, 128, 16);
+  static const Color primaryColor = primary;
 
   // Accent
   static const Color accent = Color(0xFF6366F1);
@@ -21,14 +21,11 @@ class AppColors {
   static const Color info = Color(0xFF3B82F6);
 
   // Expenses module
-  static const Color expensePrimary = Color(0xFFEC4899);
-  static const Color expenseSecondary = Color(0xFFF472B6);
+  static const Color expensePrimary = primary;
+  static const Color expenseSecondary = warning;
 
   // Gradients
-  static const List<Color> primaryGradient = [
-    Color(0xFFF08010),
-    Color(0xFFFFB347),
-  ];
+  static const List<Color> primaryGradient = [primary, Color(0xFFFFB347)];
   static const List<Color> earningsGradient = [
     Color(0xFF6366F1),
     Color(0xFF8B5CF6),
@@ -41,10 +38,7 @@ class AppColors {
     Color(0xFFF59E0B),
     Color(0xFFFBBF24),
   ];
-  static const List<Color> expenseGradient = [
-    Color(0xFFEC4899),
-    Color(0xFFF472B6),
-  ];
+  static const List<Color> expenseGradient = [expensePrimary, expenseSecondary];
   static const List<Color> incomeGradient = [
     Color(0xFF10B981),
     Color(0xFF34D399),
@@ -53,21 +47,43 @@ class AppColors {
     Color(0xFF6366F1),
     Color(0xFF8B5CF6),
   ];
-  static const List<Color> drawerGradient = [
-    Color(0xFF1E293B),
-    Color(0xFF334155),
-  ];
 
   // Surfaces (light)
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceAlt = Color(0xFFF8FAFC);
+  static const Color surfaceAlt = Color(0xFFF5F7FB);
   static const Color cardBorder = Color(0xFFE2E8F0);
 
   // Surfaces (dark)
-  static const Color surfaceDark = Color(0xFF000000);
-  static const Color surfaceDarkAlt = Color(0xFF1C1C1E);
-  static const Color cardDark = Color(0xFF2C2C2E);
-  static const Color cardBorderDark = Color(0xFF3A3A3C);
+  static const Color surfaceDark = Color(0xFF0B0E14);
+  static const Color surfaceDarkAlt = Color(0xFF171E2E);
+  static const Color cardDark = Color(0xFF121724);
+  static const Color cardBorderDark = Color(0xFF232D42);
+
+  // Dynamic tokens also work in const Cupertino decorations and text styles.
+  static const background = CupertinoDynamicColor.withBrightness(
+    color: surfaceAlt,
+    darkColor: surfaceDark,
+  );
+  static const panel = CupertinoDynamicColor.withBrightness(
+    color: surface,
+    darkColor: cardDark,
+  );
+  static const elevated = CupertinoDynamicColor.withBrightness(
+    color: Color(0xFFF1F5F9),
+    darkColor: surfaceDarkAlt,
+  );
+  static const outline = CupertinoDynamicColor.withBrightness(
+    color: cardBorder,
+    darkColor: cardBorderDark,
+  );
+  static const label = CupertinoDynamicColor.withBrightness(
+    color: Color(0xFF172033),
+    darkColor: Color(0xFFF1F5F9),
+  );
+  static const muted = CupertinoDynamicColor.withBrightness(
+    color: Color(0xFF64748B),
+    darkColor: Color(0xFF94A3B8),
+  );
 
   // Category palette (for expense categories)
   static const List<Color> categoryPalette = [
@@ -91,20 +107,19 @@ class AppColors {
   static bool isDark(BuildContext context) =>
       CupertinoTheme.brightnessOf(context) == Brightness.dark;
 
-  static Color cardBackground(BuildContext context) => isDark(context)
-      ? cardDark
-      : CupertinoColors.systemBackground.resolveFrom(context);
+  static Color backgroundColor(BuildContext context) =>
+      background.resolveFrom(context);
 
-  static Color elevatedBackground(BuildContext context) => isDark(context)
-      ? surfaceDarkAlt
-      : CupertinoColors.systemGrey6.resolveFrom(context);
+  static Color cardBackground(BuildContext context) =>
+      panel.resolveFrom(context);
 
-  static Color separator(BuildContext context) => isDark(context)
-      ? cardBorderDark
-      : CupertinoColors.separator.resolveFrom(context);
+  static Color elevatedBackground(BuildContext context) =>
+      elevated.resolveFrom(context);
+
+  static Color separator(BuildContext context) => outline.resolveFrom(context);
 
   static Color secondaryLabel(BuildContext context) =>
-      CupertinoColors.secondaryLabel.resolveFrom(context);
+      muted.resolveFrom(context);
 
   static Color cardShadow(BuildContext context) =>
       CupertinoColors.black.withValues(alpha: isDark(context) ? 0.35 : 0.06);

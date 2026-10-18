@@ -1,8 +1,8 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../core/utils/app_colors.dart';
 import '../../core/utils/app_layout.dart';
@@ -74,16 +74,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     return Consumer<ExpensesProvider>(
-      builder: (_, expProvider, child) {
-        context.select<SettingsProvider, (String, String, bool, double, double)>(
-          (s) => (
-            s.currency,
-            s.expensesCurrency,
-            s.hideAmounts,
-            s.usdToEgp,
-            s.usdToSar,
-          ),
-        );
+      builder: (context, expProvider, child) {
+        context
+            .select<SettingsProvider, (String, String, bool, double, double)>(
+              (s) => (
+                s.currency,
+                s.expensesCurrency,
+                s.hideAmounts,
+                s.usdToEgp,
+                s.usdToSar,
+              ),
+            );
         final settings = context.read<SettingsProvider>();
         // Rebuild only when the wallet *set* changes, not on every balance
         // refresh (which now fires on each income/expense change).
@@ -91,7 +92,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           (w) => w.paymentMethods.map((m) => '${m.id}:${m.name}').join('|'),
         );
         final walletProvider = context.read<WalletProvider>();
-        final desktop = AppLayout.of(context).hasSidebar;
+        final desktop = AppLayout.of(context).isDesktop;
         final allExpenses = expProvider.expenses;
         final availableMonths = _getAvailableMonths(allExpenses);
 
@@ -110,14 +111,21 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         // Calculate total for monthFiltered
         final double monthTotal = monthFiltered.fold(
           0.0,
-          (sum, e) => sum + settings.convert(e.amount, e.currency),
+          (sum, e) =>
+              sum +
+              settings.convert(e.amount, e.currency, settings.expensesCurrency),
         );
 
         // Calculate Category Aggregates for monthFiltered
         final monthExpensesByCategory = <String, double>{};
         for (final exp in monthFiltered) {
           monthExpensesByCategory[exp.categoryId] =
-              (monthExpensesByCategory[exp.categoryId] ?? 0.0) + exp.amount;
+              (monthExpensesByCategory[exp.categoryId] ?? 0.0) +
+              settings.convert(
+                exp.amount,
+                exp.currency,
+                settings.expensesCurrency,
+              );
         }
 
         // 2. Filter by Category
@@ -128,7 +136,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   .toList();
 
         return CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(
+          navigationBar: AppNavigationBar(
             middle: Text('expenses'.tr()),
             trailing: CupertinoButton(
               padding: EdgeInsets.zero,
@@ -198,9 +206,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
                         child: Text(
                           '${_selectedCategoryId == 'all' ? monthFiltered.length : filtered.length} ${'expenseRecords'.tr()}',
-                          style: AppText.caption(context).copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: AppText.caption(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ),
@@ -259,159 +267,68 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     double totalAmount,
     int recordCount,
     SettingsProvider settings,
-  ) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: AppColors.expenseGradient,
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        boxShadow: AppShadows.hero(context, AppColors.expensePrimary, alpha: 0.35),
-      ),
-      child: Stack(
-        children: [
-          // Decorative circle
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                color: CupertinoColors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 40,
-            bottom: -30,
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: CupertinoColors.white.withValues(alpha: 0.06),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  ) => Container(
+    margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    padding: const EdgeInsets.all(20),
+    decoration: AppCard.container(
+      context,
+      border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const FaIcon(
-                            FontAwesomeIcons.receipt,
-                            color: CupertinoColors.white,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'totalExpenses'.tr(),
-                          style: const TextStyle(
-                            color: CupertinoColors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Add button
-                    GestureDetector(
-                      onTap: () =>
-                          _navigateTo(context, const AddExpenseScreen()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: CupertinoColors.white.withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              CupertinoIcons.add,
-                              color: CupertinoColors.white,
-                              size: 13,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'addExpense'.tr(),
-                              style: const TextStyle(
-                                color: CupertinoColors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                const Icon(
+                  CupertinoIcons.arrow_up_right,
+                  color: AppColors.primary,
+                  size: 22,
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  settings.formatMoney(totalAmount),
-                  style: const TextStyle(
-                    color: CupertinoColors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -1,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '$recordCount ${'expenseRecords'.tr()}',
-                        style: const TextStyle(
-                          color: CupertinoColors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(width: 10),
+                Text('totalExpenses'.tr(), style: AppText.cardTitle(context)),
               ],
             ),
+            CupertinoButton(
+              key: const ValueKey('add-expense'),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              onPressed: () => _navigateTo(context, const AddExpenseScreen()),
+              child: Text(
+                'addExpense'.tr(),
+                style: AppText.caption(
+                  context,
+                ).copyWith(color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            settings.formatMoney(totalAmount, settings.expensesCurrency),
+            style: AppText.amount(
+              context,
+              AppColors.primary,
+            ).copyWith(fontSize: 30),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '$recordCount ${'expenseRecords'.tr()}',
+          style: AppText.caption(context),
+        ),
+      ],
+    ),
+  );
 
   // ── Chart Section ───────────────────────────────────────────────────────────
 
@@ -469,14 +386,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  'expenseBreakdown'.tr(),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    'expenseBreakdown'.tr(),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -507,7 +426,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 categories: categories,
                 total: total,
                 currency: settings.expensesCurrency,
-                animate: !AppLayout.of(context).hasSidebar,
+                animate: !AppLayout.of(context).isDesktop,
               ),
             ),
           ),
@@ -565,14 +484,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 color: isSelected
                     ? null
                     : (isDark
-                          ? const Color(0xFF2C2C2E)
-                          : CupertinoColors.systemGrey6.resolveFrom(context)),
+                          ? AppColors.cardDark
+                          : AppColors.elevatedBackground(context)),
                 borderRadius: BorderRadius.circular(19),
                 border: Border.all(
                   color: isSelected
                       ? CupertinoColors.transparent
                       : (isDark
-                            ? const Color(0xFF3A3A3C)
+                            ? AppColors.cardBorderDark
                             : const Color(0xFFE2E8F0)),
                   width: 0.8,
                 ),
@@ -765,7 +684,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       onTap: () => _navigateTo(context, AddExpenseScreen(expense: expense)),
       onDelete: () => _confirmDelete(context, expense, expProvider),
     );
-    if (AppLayout.of(context).hasSidebar || _entranceDone || i >= 8) {
+    if (AppLayout.of(context).isDesktop || _entranceDone || i >= 8) {
       return card;
     }
     return card
@@ -787,6 +706,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     ExpensesProvider provider,
   ) {
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoAlertDialog(
         title: Text('deleteExpense'.tr()),

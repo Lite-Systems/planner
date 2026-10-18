@@ -1,3 +1,6 @@
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/utils/app_tokens.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_layout.dart';
@@ -85,7 +88,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
+      navigationBar: AppNavigationBar(
         middle: Text(
           widget.income == null ? 'addIncome'.tr() : 'editIncome'.tr(),
         ),
@@ -103,6 +106,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               CupertinoTextField(
+                decoration: AppCard.container(context, radius: AppRadius.md),
                 controller: _titleController,
                 placeholder: 'titlePlaceholder'.tr(),
                 padding: const EdgeInsets.all(12),
@@ -112,6 +116,10 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                 children: [
                   Expanded(
                     child: CupertinoTextField(
+                      decoration: AppCard.container(
+                        context,
+                        radius: AppRadius.md,
+                      ),
                       controller: _amountController,
                       placeholder: 'amountPlaceholder'.tr(),
                       keyboardType: const TextInputType.numberWithOptions(
@@ -124,6 +132,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                   CupertinoButton(
                     onPressed: () {
                       showCupertinoModalPopup(
+                        useRootNavigator: false,
                         context: context,
                         builder: (_) => CupertinoActionSheet(
                           actions: CurrencyHelper.codes
@@ -150,7 +159,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               Consumer<IncomeProvider>(
-                builder: (_, provider, __) {
+                builder: (_, provider, _) {
                   return Wrap(
                     spacing: 8,
                     children: provider.categories.map((cat) {
@@ -166,9 +175,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                           decoration: BoxDecoration(
                             color: selected
                                 ? Color(cat.color)
-                                : CupertinoColors.systemGrey5.resolveFrom(
-                                    context,
-                                  ),
+                                : AppColors.elevatedBackground(context),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -185,10 +192,11 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               ),
               const SizedBox(height: 16),
               Consumer<WalletProvider>(
-                builder: (_, wallet, __) {
+                builder: (_, wallet, _) {
                   return CupertinoButton(
                     onPressed: () {
                       showCupertinoModalPopup(
+                        useRootNavigator: false,
                         context: context,
                         builder: (_) => CupertinoActionSheet(
                           actions: [
@@ -227,6 +235,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                 },
               ),
               CupertinoTextField(
+                decoration: AppCard.container(context, radius: AppRadius.md),
                 controller: _noteController,
                 placeholder: 'noteOptional'.tr(),
                 padding: const EdgeInsets.all(12),

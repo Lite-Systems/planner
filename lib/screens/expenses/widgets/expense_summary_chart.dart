@@ -1,3 +1,5 @@
+import '../expense_categories_screen.dart';
+import 'package:planner/core/utils/app_colors.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -216,13 +218,10 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                     shape: BoxShape.circle,
                   ),
                   child: Center(
-                    child: Text(
-                      String.fromCharCode(cat.icon),
-                      style: TextStyle(
-                        fontFamily: 'MaterialIcons',
-                        fontSize: 18,
-                        color: Color(cat.color),
-                      ),
+                    child: Icon(
+                      ExpenseCategoriesScreen.iconForCode(cat.icon),
+                      size: 18,
+                      color: Color(cat.color),
                     ),
                   ),
                 ),
@@ -326,16 +325,14 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
               color: isSelected
                   ? Color(cat.color).withValues(alpha: 0.08)
                   : (isDark
-                        ? const Color(0xFF2C2C2E)
-                        : CupertinoColors.systemBackground.resolveFrom(
-                            context,
-                          )),
+                        ? AppColors.cardDark
+                        : AppColors.cardBackground(context)),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isSelected
                     ? Color(cat.color).withValues(alpha: 0.4)
                     : (isDark
-                          ? const Color(0xFF3A3A3C)
+                          ? AppColors.cardBorderDark
                           : const Color(0xFFE2E8F0)),
                 width: isSelected ? 1.5 : 0.8,
               ),
@@ -352,13 +349,10 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
-                        child: Text(
-                          String.fromCharCode(cat.icon),
-                          style: TextStyle(
-                            fontFamily: 'MaterialIcons',
-                            fontSize: 16,
-                            color: Color(cat.color),
-                          ),
+                        child: Icon(
+                          ExpenseCategoriesScreen.iconForCode(cat.icon),
+                          size: 16,
+                          color: Color(cat.color),
                         ),
                       ),
                     ),
@@ -367,56 +361,53 @@ class _ExpenseSummaryChartState extends State<ExpenseSummaryChart>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(
                                 cat.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: isSelected
                                       ? FontWeight.w700
                                       : FontWeight.w600,
-                                  color: isDark
-                                      ? CupertinoColors.white
-                                      : const Color(0xFF1E293B),
+                                  color: AppColors.label.resolveFrom(context),
                                 ),
                               ),
-                              Row(
-                                children: [
-                                  Text(
-                                    settings.formatMoney(
-                                      entry.value,
-                                      widget.currency,
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(cat.color),
-                                    ),
+                              Text(
+                                settings.formatMoney(
+                                  entry.value,
+                                  widget.currency,
+                                ),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(cat.color),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(
+                                    cat.color,
+                                  ).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${pct.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(cat.color),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Color(
-                                        cat.color,
-                                      ).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      '${pct.toStringAsFixed(1)}%',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(cat.color),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ],
                           ),

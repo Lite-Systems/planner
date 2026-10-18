@@ -12,11 +12,8 @@ class ProjectCard extends StatelessWidget {
 
   const ProjectCard({super.key, required this.project, required this.onTap});
 
-  static const _coverSize = 80.0;
-  static const _coverRadius = BorderRadius.only(
-    topLeft: Radius.circular(12),
-    bottomLeft: Radius.circular(12),
-  );
+  static const _coverSize = 48.0;
+  static const _coverRadius = BorderRadius.all(Radius.circular(12));
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +23,8 @@ class ProjectCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: AppCard.container(context, radius: AppRadius.md),
+          padding: const EdgeInsets.all(14),
+          decoration: AppCard.container(context),
           child: Row(
             children: [
               _cover(context),
@@ -38,10 +36,12 @@ class ProjectCard extends StatelessWidget {
                     children: [
                       Text(
                         project.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: CupertinoTheme.of(context).textTheme.textStyle
                             .copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 15,
                             ),
                       ),
                       if (project.customer != null &&
@@ -115,20 +115,20 @@ class ProjectCard extends StatelessWidget {
           filterQuality: FilterQuality.medium,
           gaplessPlayback: true,
           fit: BoxFit.cover,
-          errorBuilder: (_, e, s) => _placeholder(),
+          errorBuilder: (_, e, s) => _placeholder(context),
         ),
       );
     }
 
-    return _placeholder();
+    return _placeholder(context);
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
       width: _coverSize,
       height: _coverSize,
-      decoration: const BoxDecoration(
-        color: CupertinoColors.systemGrey6,
+      decoration: BoxDecoration(
+        color: AppColors.elevatedBackground(context),
         borderRadius: _coverRadius,
       ),
       child: const Center(

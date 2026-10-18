@@ -1,3 +1,4 @@
+import 'package:planner/core/utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
@@ -171,8 +172,8 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
         height: MediaQuery.sizeOf(context).height * 0.85,
         decoration: BoxDecoration(
           color: isDark
-              ? const Color(0xFF1C1C1E)
-              : CupertinoColors.secondarySystemBackground,
+              ? AppColors.surfaceDarkAlt
+              : AppColors.elevatedBackground(context),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Theme(
@@ -187,7 +188,7 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                   width: 40,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey4.resolveFrom(context),
+                    color: AppColors.separator(context),
                     borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
@@ -231,10 +232,7 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                     ],
                   ),
                 ),
-                Container(
-                  height: 0.8,
-                  color: CupertinoColors.separator.resolveFrom(context),
-                ),
+                Container(height: 0.8, color: AppColors.separator(context)),
 
                 Expanded(
                   child: ListView(
@@ -367,13 +365,11 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: isDark
-                                ? const Color(0xFF2C2C2E)
+                                ? AppColors.cardDark
                                 : CupertinoColors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: CupertinoColors.separator.resolveFrom(
-                                context,
-                              ),
+                              color: AppColors.separator(context),
                               width: 0.5,
                             ),
                           ),
@@ -405,13 +401,11 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? const Color(0xFF2C2C2E)
+                              ? AppColors.cardDark
                               : CupertinoColors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: CupertinoColors.separator.resolveFrom(
-                              context,
-                            ),
+                            color: AppColors.separator(context),
                             width: 0.5,
                           ),
                         ),
@@ -437,8 +431,8 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                               ),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? const Color(0xFF1C1C1E)
-                                    : CupertinoColors.systemGrey6,
+                                    ? AppColors.surfaceDarkAlt
+                                    : AppColors.elevatedBackground(context),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               style: const TextStyle(
@@ -498,8 +492,10 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: isDark
-                                              ? const Color(0xFF1C1C1E)
-                                              : CupertinoColors.systemGrey6,
+                                              ? AppColors.surfaceDarkAlt
+                                              : AppColors.elevatedBackground(
+                                                  context,
+                                                ),
                                           borderRadius: BorderRadius.circular(
                                             8,
                                           ),
@@ -560,8 +556,10 @@ class _VoiceTaskSheetState extends State<VoiceTaskSheet> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: isDark
-                                          ? const Color(0xFF1C1C1E)
-                                          : CupertinoColors.systemGrey6,
+                                          ? AppColors.surfaceDarkAlt
+                                          : AppColors.elevatedBackground(
+                                              context,
+                                            ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     onSubmitted: (val) {

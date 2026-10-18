@@ -2,10 +2,8 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:planner/firebase_options.dart';
 import 'package:planner/providers/income_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -19,11 +17,11 @@ import 'providers/project_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/expenses_provider.dart';
 
-import 'package:firebase_core/firebase_core.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'core/services/notification_service.dart';
+import 'core/services/macos_widget_service.dart';
 import 'screens/splash/splash_screen.dart';
 import 'core/widgets/restart_widget.dart';
 import 'core/widgets/app_lock_gate.dart';
@@ -51,6 +49,14 @@ void main() async {
           ChangeNotifierProvider(create: (_) => LocaleProvider()),
           ChangeNotifierProvider(create: (_) => ExpensesProvider()),
           ChangeNotifierProvider(create: (_) => IncomeProvider()),
+          Provider(
+            lazy: false,
+            create: (context) => MacosWidgetService(
+              settings: context.read<SettingsProvider>(),
+              projects: context.read<ProjectProvider>(),
+            ),
+            dispose: (_, service) => service.dispose(),
+          ),
         ],
         child: ProviderWiring(
           child: EasyLocalization(
@@ -64,9 +70,9 @@ void main() async {
     ),
   );
 
-  // Nothing but settings/locale restore runs before the first frame; Firebase,
-  // FCM, notifications and (via the USD widget) the rate fetch all start once
-  // the first frame is on screen.
+  // Nothing but settings/locale restore runs before the first frame; local
+  // notifications and (via the USD widget) the rate fetch start once the first
+  // frame is on screen.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(_initializeBackgroundServices());
   });
@@ -148,20 +154,7 @@ Future<void> _configureDesktopDatabase() async {
 }
 
 Future<void> _initializeBackgroundServices() async {
-  // Firebase/FCM are not functional on macOS in this build (the app sandbox has
-  // no network-client entitlement and there is no macOS-specific Firebase app),
-  // so skip them there. Other platforms keep the existing behaviour.
-  if (kIsWeb || !Platform.isMacOS) {
-    try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      _registerFcmHandlers();
-    } catch (e) {
-      log('Firebase initialization failed: $e');
-    }
-  }
-
+  // Local notifications only; the app no longer depends on Firebase/FCM.
   try {
     await NotificationService().init();
   } catch (e) {
@@ -195,29 +188,6 @@ class PlannerApp extends StatelessWidget {
     // while keeping it on the platforms that support it.
     if (!kIsWeb && Platform.isMacOS) return app;
 
-    return UpgradeAlert(
-      dialogStyle: UpgradeDialogStyle.cupertino,
-      child: app,
-    );
+    return UpgradeAlert(dialogStyle: UpgradeDialogStyle.cupertino, child: app);
   }
-}
-
-void _registerFcmHandlers() {
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try {
-      await FirebaseMessaging.instance.requestPermission();
-      FirebaseMessaging.onMessage.listen((message) {
-        final title = message.notification?.title ?? message.data['title'];
-        final body = message.notification?.body ?? message.data['body'];
-        if (title != null || body != null) {
-          NotificationService().showNotification(
-            title: title ?? 'Smart Planner',
-            body: body ?? '',
-          );
-        }
-      });
-    } catch (e) {
-      log('FCM setup failed: $e');
-    }
-  });
 }

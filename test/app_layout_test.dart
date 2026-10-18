@@ -8,9 +8,9 @@ void main() {
   test('AppLayout breakpoints', () {
     expect(const AppLayout(390).isCompact, isTrue);
     expect(const AppLayout(768).isMedium, isTrue);
-    expect(const AppLayout(768).hasSidebar, isTrue);
+    expect(const AppLayout(768).isDesktop, isTrue);
     expect(const AppLayout(1280).isExpanded, isTrue);
-    expect(const AppLayout(599).hasSidebar, isFalse);
+    expect(const AppLayout(599).isDesktop, isFalse);
   });
 
   testWidgets('AppLayoutScope skips rebuilds within a breakpoint', (

@@ -1,3 +1,4 @@
+import 'package:planner/core/utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_tokens.dart';
@@ -34,7 +35,9 @@ class ExpenseCard extends StatelessWidget {
     final categoryColor = category != null
         ? Color(category!.color)
         : const Color(0xFF64748B);
-    final dateStr = DateFormat.MMMd().format(expense.date);
+    final dateStr = DateFormat.MMMd(
+      context.locale.toString(),
+    ).format(expense.date);
     final isFromTask = expense.taskId != null;
 
     return MouseRegion(
@@ -103,16 +106,14 @@ class ExpenseCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: CupertinoColors.activeBlue.withValues(
-                                  alpha: 0.1,
-                                ),
+                                color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
                                 'task'.tr(),
                                 style: const TextStyle(
                                   fontSize: 9,
-                                  color: CupertinoColors.activeBlue,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -122,20 +123,28 @@ class ExpenseCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          Text(
-                            category?.name ?? 'other'.tr(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: categoryColor,
-                              fontWeight: FontWeight.w500,
+                          Expanded(
+                            child: Text(
+                              category?.name ?? 'other'.tr(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: categoryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '• $dateStr',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: CupertinoColors.systemGrey,
+                          Flexible(
+                            child: Text(
+                              '• $dateStr',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: CupertinoColors.systemGrey,
+                              ),
                             ),
                           ),
                         ],
@@ -151,10 +160,7 @@ class ExpenseCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      settings.formatMoney(
-                        expense.amount,
-                        expense.currency,
-                      ),
+                      settings.formatMoney(expense.amount, expense.currency),
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,

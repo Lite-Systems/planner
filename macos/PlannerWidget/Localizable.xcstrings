@@ -1,0 +1,36 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Smart Planner": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "المخطط الذكي" } }
+      }
+    },
+    "Enable the macOS widget in Planner Settings.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "فعّل ويدجت macOS من إعدادات التطبيق." } }
+      }
+    },
+    "Open Planner to view your tasks": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "افتح التطبيق لعرض مهامك" } }
+      }
+    },
+    "tasks remaining": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "مهام متبقية" } }
+      }
+    },
+    "%lld active timers": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "%lld مؤقتات نشطة" } }
+      }
+    },
+    "Task progress and upcoming work at a glance.": {
+      "localizations": {
+        "ar": { "stringUnit": { "state": "translated", "value": "تقدم المهام والأعمال القادمة بلمحة سريعة." } }
+      }
+    }
+  },
+  "version": "1.0"
+}

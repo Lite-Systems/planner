@@ -1,3 +1,4 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_colors.dart';
 import 'package:planner/core/utils/app_tokens.dart';
@@ -35,6 +36,7 @@ class ProjectDetailScreen extends StatefulWidget {
 }
 
 class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
+  final ScrollController _scrollController = ScrollController();
   bool _isSelectionMode = false;
   final Set<String> _selectedTaskIds = {};
   String _selectedType = 'all';
@@ -46,11 +48,18 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       Provider.of<ProjectProvider>(
         context,
         listen: false,
       ).loadTasks(widget.project.id);
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -78,6 +87,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _isGeneratingPdf = active;
     if (active) {
       showCupertinoDialog<void>(
+        useRootNavigator: false,
         context: context,
         barrierDismissible: false,
         builder: (_) => const CupertinoAlertDialog(
@@ -88,7 +98,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         ),
       );
     } else {
-      Navigator.of(context, rootNavigator: true).pop();
+      Navigator.of(context).pop();
     }
   }
 
@@ -144,6 +154,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
     if (eligible == 0) {
       showCupertinoDialog(
+        useRootNavigator: false,
         context: context,
         builder: (context) => CupertinoAlertDialog(
           title: Text('archiveTasks'.tr()),
@@ -160,6 +171,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     }
 
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text('archiveTasks'.tr()),
@@ -191,6 +203,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
 
   void _confirmDeleteProject(BuildContext context) {
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text('deleteProject'.tr()),
@@ -288,13 +301,12 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
             ),
           ),
         ),
-        AnimatedCrossFade(
+        AnimatedSize(
           duration: const Duration(milliseconds: 180),
-          crossFadeState: _filtersExpanded
-              ? CrossFadeState.showFirst
-              : CrossFadeState.showSecond,
-          firstChild: _buildFilterPanel(members),
-          secondChild: const SizedBox.shrink(),
+          alignment: Alignment.topCenter,
+          child: _filtersExpanded
+              ? _buildFilterPanel(members)
+              : const SizedBox.shrink(),
         ),
       ],
     );
@@ -427,16 +439,17 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
         ),
         decoration: BoxDecoration(
           color: isSelected
-              ? CupertinoColors.activeBlue
+              ? AppColors.primary
               : AppColors.elevatedBackground(context),
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         child: Text(
           label,
           style: isSelected
-              ? AppText.caption(
-                  context,
-                ).copyWith(color: CupertinoColors.white, fontWeight: FontWeight.w600)
+              ? AppText.caption(context).copyWith(
+                  color: CupertinoColors.white,
+                  fontWeight: FontWeight.w600,
+                )
               : AppText.caption(
                   context,
                 ).copyWith(color: CupertinoColors.label, fontSize: 13),
@@ -454,7 +467,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           orElse: () => widget.project,
         );
         return CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(
+          navigationBar: AppNavigationBar(
             middle: Text(project.name),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -493,6 +506,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                     onPressed: () {
                       if (_selectedTaskIds.isEmpty) return;
                       showCupertinoDialog(
+                        useRootNavigator: false,
                         context: context,
                         builder: (context) => CupertinoAlertDialog(
                           title: Text('deleteTasks'.tr()),
@@ -664,6 +678,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           }
 
                           return ListView.builder(
+                            controller: _scrollController,
+                            primary: false,
                             itemCount: tasks.length,
                             itemBuilder: (_, index) {
                               final task = tasks[index];
@@ -735,6 +751,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                             padding: EdgeInsets.zero,
                             onPressed: () {
                               showCupertinoModalPopup(
+                                useRootNavigator: false,
                                 context: context,
                                 builder: (_) => VoiceTaskSheet(
                                   projectId: widget.project.id,
@@ -775,9 +792,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                                   const SizedBox(width: 6),
                                   Text(
                                     'voiceCreate'.tr(),
-                                    style: AppText.body(
-                                      context,
-                                    ).copyWith(
+                                    style: AppText.body(context).copyWith(
                                       color: CupertinoColors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,

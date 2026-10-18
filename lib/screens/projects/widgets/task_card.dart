@@ -1,3 +1,4 @@
+import 'package:planner/core/utils/app_colors.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/models/project_task.dart';
@@ -45,14 +46,12 @@ class _TaskCardState extends State<TaskCard> {
         child: Container(
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: CupertinoColors.systemBackground,
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            boxShadow: AppShadows.card(context),
+          decoration: AppCard.container(
+            context,
             border:
                 widget.isSelectionMode &&
                     widget.selectedTaskIds.contains(task.id)
-                ? Border.all(color: CupertinoColors.activeBlue, width: 2)
+                ? Border.all(color: AppColors.primary, width: 2)
                 : null,
           ),
           child: Row(
@@ -65,7 +64,7 @@ class _TaskCardState extends State<TaskCard> {
                         ? FontAwesomeIcons.solidCircleCheck
                         : FontAwesomeIcons.circle,
                     color: widget.selectedTaskIds.contains(task.id)
-                        ? CupertinoColors.activeBlue
+                        ? AppColors.primary
                         : CupertinoColors.systemGrey,
                     size: 20,
                   ),
@@ -164,9 +163,7 @@ class _TaskCardState extends State<TaskCard> {
                                     ? CupertinoColors.destructiveRed.withValues(
                                         alpha: 0.1,
                                       )
-                                    : CupertinoColors.activeBlue.withValues(
-                                        alpha: 0.1,
-                                      ),
+                                    : AppColors.primary.withValues(alpha: 0.1),
                               ),
                               child: FaIcon(
                                 task.isTimerRunning
@@ -175,7 +172,7 @@ class _TaskCardState extends State<TaskCard> {
                                 size: 12,
                                 color: task.isTimerRunning
                                     ? CupertinoColors.destructiveRed
-                                    : CupertinoColors.activeBlue,
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
@@ -255,7 +252,7 @@ class _TaskCardState extends State<TaskCard> {
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: CupertinoColors.activeBlue,
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                 ],
@@ -265,7 +262,7 @@ class _TaskCardState extends State<TaskCard> {
                                 height: 6,
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: CupertinoColors.systemGrey6,
+                                  color: AppColors.elevatedBackground(context),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: FractionallySizedBox(
@@ -275,7 +272,7 @@ class _TaskCardState extends State<TaskCard> {
                                     decoration: BoxDecoration(
                                       color: progress == 1.0
                                           ? CupertinoColors.activeGreen
-                                          : CupertinoColors.activeBlue,
+                                          : AppColors.primary,
                                       borderRadius: BorderRadius.circular(3),
                                     ),
                                   ),
@@ -335,9 +332,7 @@ class _TaskCardState extends State<TaskCard> {
               ),
               const SizedBox(width: 4),
               Text(
-                task.isPaid
-                    ? (paymentName ?? 'paid'.tr())
-                    : 'unpaid'.tr(),
+                task.isPaid ? (paymentName ?? 'paid'.tr()) : 'unpaid'.tr(),
                 style: TextStyle(
                   fontSize: 10,
                   color: task.isPaid
@@ -357,12 +352,12 @@ Widget buildTypeTag(String type) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: CupertinoColors.systemBlue.withValues(alpha: 0.1),
+      color: AppColors.primary.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(4),
     ),
     child: Text(
       type.tr(),
-      style: const TextStyle(fontSize: 12, color: CupertinoColors.systemBlue),
+      style: const TextStyle(fontSize: 12, color: AppColors.primary),
     ),
   );
 }
@@ -508,13 +503,13 @@ class _LiveTimerChipState extends State<_LiveTimerChip> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: task.isTimerRunning
-            ? CupertinoColors.activeBlue.withValues(alpha: 0.1)
-            : CupertinoColors.systemGrey6,
+            ? AppColors.primary.withValues(alpha: 0.1)
+            : AppColors.elevatedBackground(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: task.isTimerRunning
-              ? CupertinoColors.activeBlue
-              : CupertinoColors.systemGrey4,
+              ? AppColors.primary
+              : AppColors.separator(context),
           width: 0.5,
         ),
       ),
@@ -525,7 +520,7 @@ class _LiveTimerChipState extends State<_LiveTimerChip> {
             FontAwesomeIcons.clock,
             size: 12,
             color: task.isTimerRunning
-                ? CupertinoColors.activeBlue
+                ? AppColors.primary
                 : CupertinoColors.systemGrey,
           ),
           const SizedBox(width: 4),
@@ -536,7 +531,7 @@ class _LiveTimerChipState extends State<_LiveTimerChip> {
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: task.isTimerRunning
-                  ? CupertinoColors.activeBlue
+                  ? AppColors.primary
                   : CupertinoColors.label.resolveFrom(context),
             ),
           ),

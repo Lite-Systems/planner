@@ -4,10 +4,10 @@ platform :android do
   desc "Build Flutter AppBundle (AAB) for release"
   lane :build_aab_release do
     UI.message("Cleaning Flutter project...")
-    sh "fvm flutter clean"
+    sh "flutter clean"
 
     UI.message("Building Flutter AAB for release...")
-    sh "fvm flutter build appbundle"
+    sh "flutter build appbundle"
 
     UI.success("AAB built successfully at: build/app/outputs/bundle/release/app-release.aab 🎉")
   end
@@ -20,19 +20,19 @@ platform :android do
     upload_to_play_store(
       track: "internal",
       aab: "../build/app/outputs/bundle/release/app-release.aab",
-      json_key: "../android/app/google-services.json"
+      json_key: "../android/app/play-account.json"
       # json_key: "play-account.json"
     )
     UI.success("Deployment to Google Play Internal Testing completed! 🚀")
   end
   
   desc "Upload AAB to Google Play Internal Testing Track"
-  lane :upload_to_play_store do
+  lane :upload_aab do
     UI.message("Uploading to Google Play Internal Testing Track ✨")
     upload_to_play_store(
       track: "internal",
       aab: "../build/app/outputs/bundle/release/app-release.aab",
-      json_key: "../android/app/google-services.json"
+      json_key: "../android/app/play-account.json"
       # json_key: "play-account.json"
     )
     UI.success("Deployment to Google Play Internal Testing completed! 🚀")

@@ -1,0 +1,13 @@
+#include "../Runner/Configs/AppInfo.xcconfig"
+#include "../Flutter/ephemeral/Flutter-Generated.xcconfig"
+
+PRODUCT_NAME = PlannerWidget
+PRODUCT_BUNDLE_IDENTIFIER = com.litesystems.smartplanner.PlannerWidget
+INFOPLIST_FILE = PlannerWidget/Info.plist
+CODE_SIGN_ENTITLEMENTS = PlannerWidget/PlannerWidget.entitlements
+CODE_SIGN_STYLE = Automatic
+APPLICATION_EXTENSION_API_ONLY = YES
+SKIP_INSTALL = YES
+SWIFT_VERSION = 5.0
+MACOSX_DEPLOYMENT_TARGET = 15.0
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks

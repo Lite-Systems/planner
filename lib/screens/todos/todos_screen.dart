@@ -1,3 +1,4 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -28,19 +29,15 @@ class _TodosScreenState extends State<TodosScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text('todos'.tr()),
-        automaticBackgroundVisibility: false,
-        enableBackgroundFilterBlur: false,
-        transitionBetweenRoutes: false,
-      ),
+      navigationBar: AppNavigationBar(middle: Text('todos'.tr())),
       child: SafeArea(
         child: Consumer<ProjectProvider>(
           builder: (context, provider, _) {
-            final allTasks = provider.projects
-                .expand((p) => provider.activeTasks(p.id))
-                .toList()
-              ..sort((a, b) => b.startDate.compareTo(a.startDate));
+            final allTasks =
+                provider.projects
+                    .expand((p) => provider.activeTasks(p.id))
+                    .toList()
+                  ..sort((a, b) => b.startDate.compareTo(a.startDate));
             final tasks = _filtered(allTasks);
             final projectName = {
               for (final p in provider.projects) p.id: p.name,
@@ -52,6 +49,8 @@ class _TodosScreenState extends State<TodosScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                     child: CupertinoSlidingSegmentedControl<String>(
+                      backgroundColor: AppColors.elevatedBackground(context),
+                      thumbColor: AppColors.cardBackground(context),
                       groupValue: _statusFilter,
                       children: {
                         'all': Text('allStatuses'.tr()),

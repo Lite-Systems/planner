@@ -1,657 +1,1117 @@
+import 'package:easy_localization/easy_localization.dart' hide TextDirection;
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart'
-    show
-        LinearProgressIndicator,
-        AlwaysStoppedAnimation,
-        Color,
-        Theme,
-        ThemeData;
-import 'package:planner/core/utils/app_colors.dart';
-import 'package:planner/core/utils/app_layout.dart';
-import 'package:planner/core/utils/app_tokens.dart';
-import 'package:planner/core/utils/no_animation_route.dart';
-import 'package:planner/providers/expenses_provider.dart';
-import 'package:planner/providers/income_provider.dart';
-import 'package:planner/providers/settings_provider.dart';
-import 'package:planner/providers/wallet_provider.dart';
-import 'package:planner/screens/income/income_screen.dart';
-import 'package:planner/screens/shell/app_shell.dart';
 import 'package:provider/provider.dart';
-import 'package:easy_localization/easy_localization.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../providers/project_provider.dart';
-import '../expenses/expenses_screen.dart';
-import '../projects/screens/projects_screen.dart';
+import '../../core/utils/no_animation_route.dart';
+import '../../core/utils/timer_ticker.dart';
 import '../../models/project.dart';
+import '../../models/project_task.dart';
+import '../../providers/expenses_provider.dart';
+import '../../providers/income_provider.dart';
+import '../../providers/project_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/wallet_provider.dart';
+import '../expenses/add_expense_screen.dart';
+import '../expenses/expenses_screen.dart';
+import '../income/add_income_screen.dart';
+import '../income/income_screen.dart';
 import '../projects/screens/project_detail_screen.dart';
-import '../projects/widgets/project_card.dart';
-import '../projects/widgets/task_card.dart';
+import '../projects/screens/projects_screen.dart';
+import '../settings/payment_methods_screen.dart';
+import '../settings/settings_screen.dart';
+import '../shell/app_shell.dart';
+import '../todos/todos_screen.dart';
+import 'widgets/dashboard_style.dart';
 import 'widgets/home_summary_cards.dart';
 import 'widgets/usd_rate_widget.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.onMenuTap});
-
-  final VoidCallback? onMenuTap;
-
+  const HomeScreen({super.key});
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  void _openProjects() {
-    AppShellScope.open(context, AppSection.projects, const ProjectsScreen());
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  void _openIncome() {
-    AppShellScope.open(context, AppSection.income, const IncomeScreen());
+  void _open(AppSection section) {
+    if (section == AppSection.home) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
+      return;
+    }
+    final page = switch (section) {
+      AppSection.home => const SizedBox.shrink(),
+      AppSection.projects => const ProjectsScreen(),
+      AppSection.todos => const TodosScreen(),
+      AppSection.income => const IncomeScreen(),
+      AppSection.expenses => const ExpensesScreen(),
+      AppSection.settings => const SettingsScreen(),
+    };
+    AppShellScope.open(context, section, page);
   }
 
-  void _openExpenses() {
-    AppShellScope.open(context, AppSection.expenses, const ExpensesScreen());
-  }
-
-  void _openProject(Project project) {
-    Navigator.of(context).push(
-      NoAnimationPageRoute(
-        builder: (_) => ProjectDetailScreen(project: project),
-      ),
-    );
-  }
+  void _openWallets() => Navigator.of(
+    context,
+  ).push(NoAnimationPageRoute(builder: (_) => const PaymentMethodsScreen()));
+  void _openProject(Project project) => Navigator.of(context).push(
+    NoAnimationPageRoute(builder: (_) => ProjectDetailScreen(project: project)),
+  );
 
   @override
   Widget build(BuildContext context) {
-    final layout = AppLayout.of(context);
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        leading: widget.onMenuTap == null
-            ? null
-            : CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: widget.onMenuTap,
-                child: const FaIcon(FontAwesomeIcons.bars, size: 22),
-              ),
-        middle: Text('appName'.tr()),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Selector<SettingsProvider, bool>(
-              selector: (_, s) => s.hideAmounts,
-              builder: (_, hideAmounts, _) => CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => context
-                    .read<SettingsProvider>()
-                    .setHideAmounts(!hideAmounts),
-                child: FaIcon(
-                  hideAmounts
-                      ? FontAwesomeIcons.eyeSlash
-                      : FontAwesomeIcons.eye,
-                  size: 18,
-                ),
-              ),
-            ),
-            if (!layout.hasSidebar)
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: _openProjects,
-                child: const FaIcon(FontAwesomeIcons.briefcase, size: 20),
-              ),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        // Only the density-driven pieces rebuild when these settings change;
-        // project/income/expenses data is subscribed per-section below.
-        child: Selector<SettingsProvider, (bool, double, bool)>(
-          selector: (_, s) =>
-              (s.hideAmounts, s.cardPadding, s.isExpensesEnabled),
-          builder: (context, value, child) {
-            final hideAmounts = value.$1;
-            final pad = value.$2;
-            final expensesEnabled = value.$3;
-            final previews = <Widget>[
-              _buildIncomePreview(context, pad),
-              if (expensesEnabled) _buildExpensesPreview(context, pad),
-            ];
-
-            return AppLayout.constrain(
-              ListView(
-                padding: const EdgeInsets.only(bottom: 100),
-                children: [
-                  _buildWelcomeHeader(context),
-                  if (!hideAmounts) const UsdRateWidget(),
-                  const HomeSummaryCards(),
-                  const _TaskProgressCard(),
-                  if (layout.isExpanded && expensesEnabled)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: previews[0]),
-                          Expanded(child: previews[1]),
-                        ],
-                      ),
-                    )
-                  else
-                    ...previews,
-                  _buildWalletStrip(context, layout),
-                  _ActiveTimersSection(onOpenProject: _openProject),
-                  _RecentProjectsSection(onOpenProject: _openProject),
-                ],
-              ),
-              maxWidth: AppLayout.maxContentWidth,
-            );
-          },
-        ),
-      ),
+    final flags = context.select<SettingsProvider, (bool, bool, bool)>(
+      (s) => (s.hideAmounts, s.isExpensesEnabled, s.isTodosEnabled),
     );
-  }
-
-  Widget _buildIncomePreview(BuildContext context, double pad) {
-    return Consumer2<IncomeProvider, SettingsProvider>(
-      builder: (_, incomeProvider, settings, _) {
-        final recent = incomeProvider.recentIncomes(3);
-        final total = incomeProvider.incomes.fold<double>(
-          0,
-          (sum, e) => sum + settings.convert(e.amount, e.currency),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use the available pane width, not a fixed device-size assumption.
+        final wide = constraints.maxWidth >= 1040;
+        final gutter = constraints.maxWidth >= 700 ? 28.0 : 16.0;
+        final progress = _TaskProgressCard(
+          onTap: () => _open(flags.$3 ? AppSection.todos : AppSection.projects),
         );
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: EdgeInsets.all(pad),
-          decoration: AppCard.container(context, radius: AppRadius.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('recentIncome'.tr(), style: AppText.cardTitle(context)),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 0),
-                    onPressed: _openIncome,
-                    child: Text(
-                      'viewAll'.tr(),
-                      style: AppText.body(context).copyWith(
-                        color: CupertinoTheme.of(context).primaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                settings.formatMoney(total),
-                style: AppText.amount(context, AppColors.success),
-              ),
-              if (recent.isNotEmpty) ...[
-                const SizedBox(height: AppSpacing.md),
-                ...recent.map(
-                  (e) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            e.title,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.body(context),
-                          ),
-                        ),
-                        Text(
-                          settings.formatMoney(e.amount, e.currency),
-                          style: AppText.body(context).copyWith(
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
+        final income = _IncomePreview(onSeeAll: () => _open(AppSection.income));
+        final expenses = _ExpensesPreview(
+          onSeeAll: () => _open(AppSection.expenses),
         );
-      },
-    );
-  }
+        final wallets = _WalletsSection(onSeeAll: _openWallets);
 
-  Widget _buildWalletStrip(BuildContext context, AppLayout layout) {
-    return Consumer<WalletProvider>(
-      builder: (_, wallet, _) {
-        if (wallet.paymentMethods.isEmpty) return const SizedBox.shrink();
-        final settings = Provider.of<SettingsProvider>(context, listen: false);
-        final chips = wallet.paymentMethods.map((method) {
-          final balance = wallet.balanceFor(method, settings: settings);
-          return Container(
-            width: 180,
-            margin: EdgeInsets.only(
-              right: layout.hasSidebar ? 0 : 12,
-              bottom: layout.hasSidebar ? 12 : 0,
-            ),
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            decoration: BoxDecoration(
-              color: Color(method.color).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(
-                color: Color(method.color).withValues(alpha: 0.25),
-                width: 0.5,
-              ),
-            ),
+        return CupertinoPageScaffold(
+          backgroundColor: DashboardStyle.background(context),
+          child: SafeArea(
+            bottom: false,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  method.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.cardTitle(context),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  settings.formatMoney(balance),
-                  style: AppText.amount(
-                    context,
-                    CupertinoColors.label.resolveFrom(context),
+                Expanded(
+                  child: CustomScrollView(
+                    key: const PageStorageKey('dashboard-scroll'),
+                    controller: _scrollController,
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(gutter, 24, gutter, 28),
+                        sliver: SliverToBoxAdapter(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1440),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (wide && !flags.$1)
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        const Expanded(child: _WelcomeHeader()),
+                                        const SizedBox(width: 32),
+                                        const Expanded(child: UsdRateWidget()),
+                                      ],
+                                    )
+                                  else ...[
+                                    const _WelcomeHeader(),
+                                    if (!flags.$1) ...[
+                                      const SizedBox(height: 22),
+                                      const UsdRateWidget(),
+                                    ],
+                                  ],
+                                  const SizedBox(height: 26),
+                                  _SectionHeading(
+                                    title: 'dashboardFinancialOverview'.tr(),
+                                    subtitle: 'dashboardAutoUpdated'.tr(),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  HomeSummaryCards(
+                                    onWalletTap: _openWallets,
+                                    onPendingTap: () =>
+                                        _open(AppSection.projects),
+                                    onIncomeTap: () => _open(AppSection.income),
+                                    onBalanceTap: () => _open(
+                                      flags.$2
+                                          ? AppSection.expenses
+                                          : AppSection.income,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 26),
+                                  if (wide)
+                                    Row(
+                                      key: const ValueKey(
+                                        'dashboard-wide-columns',
+                                      ),
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 7,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              income,
+                                              if (flags.$2) ...[
+                                                const SizedBox(height: 26),
+                                                expenses,
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 24),
+                                        Expanded(
+                                          flex: 5,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              progress,
+                                              const SizedBox(height: 24),
+                                              wallets,
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else ...[
+                                    progress,
+                                    const SizedBox(height: 26),
+                                    income,
+                                    if (flags.$2) ...[
+                                      const SizedBox(height: 26),
+                                      expenses,
+                                    ],
+                                    const SizedBox(height: 26),
+                                    wallets,
+                                  ],
+                                  _ActiveTimersSection(
+                                    onOpenProject: _openProject,
+                                    onSeeAll: () => _open(
+                                      flags.$3
+                                          ? AppSection.todos
+                                          : AppSection.projects,
+                                    ),
+                                  ),
+                                  _RecentProjectsSection(
+                                    onOpenProject: _openProject,
+                                    onSeeAll: () => _open(AppSection.projects),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          );
-        }).toList();
-
-        if (layout.hasSidebar) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Wrap(spacing: 12, runSpacing: 4, children: chips),
-          );
-        }
-
-        return Container(
-          height: 92,
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: chips,
           ),
         );
       },
-    );
-  }
-
-  Widget _buildExpensesPreview(BuildContext context, double pad) {
-    return Consumer2<ExpensesProvider, SettingsProvider>(
-      builder: (_, expProvider, settings, _) {
-        final recentExpenses = expProvider.recentExpenses(3);
-        final card = Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: EdgeInsets.all(pad),
-          decoration: AppCard.container(context, radius: AppRadius.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'recentExpenses'.tr(),
-                    style: AppText.cardTitle(context),
-                  ),
-                  CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    minimumSize: const Size(0, 0),
-                    onPressed: _openExpenses,
-                    child: Text(
-                      'viewAll'.tr(),
-                      style: AppText.body(context).copyWith(
-                        color: CupertinoTheme.of(context).primaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: AppColors.expenseGradient,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      settings.formatMoney(
-                        expProvider.expenses.fold<double>(
-                          0,
-                          (sum, e) =>
-                              sum + settings.convert(e.amount, e.currency),
-                        ),
-                      ),
-                      style: const TextStyle(
-                        color: CupertinoColors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${expProvider.expenses.length} ${'expenseRecords'.tr()}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.secondaryLabel(context),
-                    ),
-                  ),
-                ],
-              ),
-              if (recentExpenses.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                ...recentExpenses.map((e) {
-                  final cat = expProvider.getCategoryById(e.categoryId);
-                  final catColor = cat != null
-                      ? Color(cat.color)
-                      : AppColors.expensePrimary;
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: catColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            e.title,
-                            style: const TextStyle(fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          settings.formatMoney(e.amount, e.currency),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: catColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ],
-          ),
-        );
-        if (AppLayout.of(context).hasSidebar) return card;
-        return card.animate().fadeIn(delay: 150.ms, duration: 400.ms);
-      },
-    );
-  }
-
-  Widget _buildWelcomeHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'welcomeBack'.tr(),
-            style: TextStyle(
-              fontSize: 15,
-              color: AppColors.secondaryLabel(context),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text('dashboardOverview'.tr(), style: AppText.display(context)),
-        ],
-      ),
     );
   }
 }
 
-// ── Home sections, each with its own ProjectProvider subscription ────────────
+class _WelcomeHeader extends StatelessWidget {
+  const _WelcomeHeader();
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: DashboardStyle.elevated(context),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: DashboardStyle.border(context)),
+              ),
+              child: Text(
+                'welcomeBack'.tr(),
+                style: DashboardStyle.text(
+                  context,
+                  size: 11,
+                  color: DashboardStyle.muted(context),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'dashboardOverview'.tr(),
+              style: DashboardStyle.text(
+                context,
+                size: 27,
+                weight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(width: 12),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: DashboardStyle.emerald.withValues(alpha: 0.08),
+          border: Border.all(
+            color: DashboardStyle.emerald.withValues(alpha: 0.25),
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: DashboardStyle.emerald,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'dashboardLocalWorkspace'.tr(),
+              style: DashboardStyle.text(
+                context,
+                size: 10,
+                color: DashboardStyle.dark(context)
+                    ? const Color(0xFF34D399)
+                    : const Color(0xFF047857),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
 
-/// Tasks progress card. Rebuilds only when task stats actually change.
-class _TaskProgressCard extends StatelessWidget {
-  const _TaskProgressCard();
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading({
+    required this.title,
+    this.subtitle,
+    this.onSeeAll,
+    this.amount,
+    this.color,
+  });
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onSeeAll;
+  final String? amount;
+  final Color? color;
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<ProjectProvider>(
-      builder: (context, provider, _) {
-        final pad = context.select<SettingsProvider, double>(
-          (s) => s.cardPadding,
-        );
-        final total = provider.totalTasksCount;
-        final completed = provider.completedTasksCount;
-        final progress = total > 0 ? completed / total : 0.0;
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: DashboardStyle.text(
+                context,
+                size: 15,
+                weight: FontWeight.w700,
+              ),
+            ),
+            if (amount != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                amount!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textDirection: TextDirection.ltr,
+                style: DashboardStyle.text(
+                  context,
+                  size: 13,
+                  weight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(width: 12),
+      if (onSeeAll != null)
+        CupertinoButton(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          minimumSize: const Size(44, 36),
+          onPressed: onSeeAll,
+          child: Text(
+            'viewAll'.tr(),
+            style: DashboardStyle.text(
+              context,
+              size: 12,
+              weight: FontWeight.w700,
+              color: DashboardStyle.orange,
+            ),
+          ),
+        )
+      else if (subtitle != null)
+        Flexible(
+          child: Text(
+            subtitle!,
+            textAlign: TextAlign.end,
+            style: DashboardStyle.text(
+              context,
+              size: 10,
+              color: DashboardStyle.muted(context),
+            ),
+          ),
+        ),
+    ],
+  );
+}
 
-        return Container(
-          margin: const EdgeInsets.all(16),
-          padding: EdgeInsets.all(pad),
-          decoration: AppCard.container(context, radius: AppRadius.xxl),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+class _TaskProgressCard extends StatelessWidget {
+  const _TaskProgressCard({required this.onTap});
+  final VoidCallback onTap;
+  @override
+  Widget build(
+    BuildContext context,
+  ) => Selector<ProjectProvider, (int, int, int, int)>(
+    selector: (_, p) => (
+      p.totalTasksCount,
+      p.completedTasksCount,
+      p.pendingTasksCount,
+      p.inProgressTasksCount,
+    ),
+    builder: (context, stats, _) {
+      final progress = stats.$1 == 0
+          ? 0.0
+          : (stats.$2 / stats.$1).clamp(0.0, 1.0);
+      return DashboardPanel(
+        key: const ValueKey('dashboard-progress'),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'tasksProgress'.tr(),
-                        style: AppText.heading(context),
+                        style: DashboardStyle.text(
+                          context,
+                          size: 15,
+                          weight: FontWeight.w700,
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.xs),
+                      const SizedBox(height: 5),
                       Text(
-                        '$completed / $total ${'tasksCompleted'.tr()}',
-                        style: AppText.bodySecondary(context),
+                        '\u2066${stats.$2} / ${stats.$1}\u2069 ${'tasksCompleted'.tr()}',
+                        style: DashboardStyle.text(
+                          context,
+                          size: 11,
+                          color: DashboardStyle.muted(context),
+                        ),
                       ),
                     ],
                   ),
-                  Text(
-                    '${(progress * 100).toInt()}%',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: CupertinoTheme.of(context).primaryColor,
-                    ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${(progress * 100).round()}%',
+                  style: DashboardStyle.text(
+                    context,
+                    size: 26,
+                    weight: FontWeight.w800,
+                    color: DashboardStyle.orange,
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: SizedBox(
-                  height: 12,
-                  child: Theme(
-                    data: AppColors.isDark(context)
-                        ? ThemeData.dark()
-                        : ThemeData.light(),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: AppColors.elevatedBackground(context),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        CupertinoTheme.of(context).primaryColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Semantics(
+              label: 'tasksProgress'.tr(),
+              value: '${(progress * 100).round()}%',
+              child: Container(
+                height: 10,
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: DashboardStyle.elevated(context),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: DashboardStyle.border(context)),
+                ),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FractionallySizedBox(
+                    widthFactor: progress,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [DashboardStyle.amber, DashboardStyle.orange],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _stat(
-                    context,
-                    'totalTasks'.tr(),
-                    total.toString(),
-                    CupertinoColors.activeBlue,
-                  ),
-                  _stat(
-                    context,
-                    'pending'.tr(),
-                    provider.pendingTasksCount.toString(),
-                    CupertinoColors.systemOrange,
-                  ),
-                  _stat(
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _stat(
                     context,
                     'workingOn'.tr(),
-                    provider.inProgressTasksCount.toString(),
-                    CupertinoColors.systemGreen,
+                    stats.$4,
+                    DashboardStyle.emerald,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _stat(
+                    context,
+                    'pending'.tr(),
+                    stats.$3,
+                    DashboardStyle.amber,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _stat(
+                    context,
+                    'totalTasks'.tr(),
+                    stats.$1,
+                    DashboardStyle.label(context),
+                  ),
+                ),
+              ],
+            ),
+            CupertinoButton(
+              padding: const EdgeInsets.only(top: 10),
+              minimumSize: const Size(44, 36),
+              onPressed: onTap,
+              child: Text(
+                'dashboardViewTasks'.tr(),
+                style: DashboardStyle.text(
+                  context,
+                  size: 11,
+                  color: DashboardStyle.orange,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  Widget _stat(BuildContext context, String label, int value, Color color) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        decoration: BoxDecoration(
+          color: DashboardStyle.elevated(context),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$value',
+              style: DashboardStyle.text(
+                context,
+                size: 17,
+                weight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: DashboardStyle.text(
+                context,
+                size: 10,
+                color: DashboardStyle.muted(context),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _IncomePreview extends StatelessWidget {
+  const _IncomePreview({required this.onSeeAll});
+  final VoidCallback onSeeAll;
+  @override
+  Widget build(
+    BuildContext context,
+  ) => Consumer2<IncomeProvider, SettingsProvider>(
+    builder: (context, income, settings, _) {
+      final total = income.incomes.fold<double>(
+        0,
+        (sum, e) => sum + settings.convert(e.amount, e.currency),
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeading(
+            title: 'recentIncome'.tr(),
+            amount: settings.formatMoney(total),
+            color: DashboardStyle.emerald,
+            onSeeAll: onSeeAll,
+          ),
+          const SizedBox(height: 12),
+          if (income.incomes.isEmpty)
+            _EmptyState(
+              icon: CupertinoIcons.arrow_down_left,
+              label: 'noIncome'.tr(),
+              onTap: onSeeAll,
+            )
+          else
+            for (final entry in income.recentIncomes(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _TransactionRow(
+                  title: entry.title,
+                  subtitle:
+                      '${income.getCategoryById(entry.categoryId)?.name ?? 'other'.tr()} • ${DateFormat.MMMd(context.locale.toString()).format(entry.date)}',
+                  amount: settings.hideAmounts
+                      ? settings.formatMoney(entry.amount, entry.currency)
+                      : '+${settings.formatMoney(entry.amount, entry.currency)}',
+                  icon: entry.taskId == null
+                      ? CupertinoIcons.arrow_down_left
+                      : CupertinoIcons.briefcase,
+                  color: DashboardStyle.emerald,
+                  onTap: () => Navigator.of(context).push(
+                    NoAnimationPageRoute(
+                      builder: (_) => AddIncomeScreen(income: entry),
+                    ),
+                  ),
+                ),
+              ),
+        ],
+      );
+    },
+  );
+}
+
+class _ExpensesPreview extends StatelessWidget {
+  const _ExpensesPreview({required this.onSeeAll});
+  final VoidCallback onSeeAll;
+  @override
+  Widget build(
+    BuildContext context,
+  ) => Consumer2<ExpensesProvider, SettingsProvider>(
+    builder: (context, expenses, settings, _) {
+      final total = expenses.expenses.fold<double>(
+        0,
+        (sum, e) =>
+            sum +
+            settings.convert(e.amount, e.currency, settings.expensesCurrency),
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionHeading(
+            title: 'recentExpenses'.tr(),
+            amount: settings.formatMoney(total, settings.expensesCurrency),
+            color: DashboardStyle.orange,
+            onSeeAll: onSeeAll,
+          ),
+          const SizedBox(height: 12),
+          if (expenses.expenses.isEmpty)
+            _EmptyState(
+              icon: CupertinoIcons.arrow_up_right,
+              label: 'noExpenses'.tr(),
+              onTap: onSeeAll,
+            )
+          else
+            for (final entry in expenses.recentExpenses(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _TransactionRow(
+                  title: entry.title,
+                  subtitle:
+                      '${expenses.getCategoryById(entry.categoryId)?.name ?? 'other'.tr()} • ${DateFormat.MMMd(context.locale.toString()).format(entry.date)}',
+                  amount: settings.hideAmounts
+                      ? settings.formatMoney(entry.amount, entry.currency)
+                      : '−${settings.formatMoney(entry.amount, entry.currency)}',
+                  icon: CupertinoIcons.arrow_up_right,
+                  color: DashboardStyle.orange,
+                  onTap: () => Navigator.of(context).push(
+                    NoAnimationPageRoute(
+                      builder: (_) => AddExpenseScreen(expense: entry),
+                    ),
+                  ),
+                ),
+              ),
+        ],
+      );
+    },
+  );
+}
+
+class _TransactionRow extends StatelessWidget {
+  const _TransactionRow({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+  final String title;
+  final String subtitle;
+  final String amount;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => CupertinoButton(
+    padding: EdgeInsets.zero,
+    onPressed: onTap,
+    child: DashboardPanel(
+      padding: const EdgeInsets.all(13),
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withValues(alpha: 0.20)),
+              ),
+              child: Icon(icon, size: 17, color: color),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DashboardStyle.text(
+                      context,
+                      size: 12,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DashboardStyle.text(
+                      context,
+                      size: 10,
+                      color: DashboardStyle.muted(context),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _stat(BuildContext context, String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.secondaryLabel(context),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Tasks with a running timer. TaskCard now owns its per-second ticking
-/// internally, so a ticking timer no longer rebuilds this section either.
-class _ActiveTimersSection extends StatelessWidget {
-  const _ActiveTimersSection({required this.onOpenProject});
-
-  final ValueChanged<Project> onOpenProject;
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<ProjectProvider>(
-      builder: (context, projectProvider, _) {
-        final activeTasks = projectProvider.projects
-            .expand(
-              (p) =>
-                  projectProvider.getTasks(p.id).where((t) => t.isTimerRunning),
-            )
-            .toList();
-
-        if (activeTasks.isEmpty) return const SizedBox.shrink();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HomeSectionHeader(title: 'activeTimers'.tr()),
-            ...activeTasks.map((task) {
-              Project? project;
-              for (final p in projectProvider.projects) {
-                if (p.id == task.projectId) {
-                  project = p;
-                  break;
-                }
-              }
-              return RepaintBoundary(
-                child: TaskCard(
-                  task: task,
-                  onTap: project == null ? null : () => onOpenProject(project!),
-                ),
-              );
-            }),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Most recent projects (up to 3).
-class _RecentProjectsSection extends StatelessWidget {
-  const _RecentProjectsSection({required this.onOpenProject});
-
-  final ValueChanged<Project> onOpenProject;
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<ProjectProvider>(
-      builder: (context, projectProvider, _) {
-        if (projectProvider.projects.isEmpty) return const SizedBox.shrink();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _HomeSectionHeader(
-              title: 'recentProjects'.tr(),
-              onSeeAll: () => AppShellScope.open(
-                context,
-                AppSection.projects,
-                const ProjectsScreen(),
-              ),
             ),
-            ...projectProvider.projects
-                .take(3)
-                .map(
-                  (project) => ProjectCard(
-                    project: project,
-                    onTap: () => onOpenProject(project),
+            const SizedBox(width: 10),
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: constraints.maxWidth * 0.33,
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  amount,
+                  textDirection: TextDirection.ltr,
+                  style: DashboardStyle.text(
+                    context,
+                    size: 12,
+                    weight: FontWeight.w700,
+                    color: color,
                   ),
                 ),
+              ),
+            ),
           ],
-        );
-      },
-    );
-  }
+        ),
+      ),
+    ),
+  );
 }
 
-class _HomeSectionHeader extends StatelessWidget {
-  const _HomeSectionHeader({required this.title, this.onSeeAll});
+class _WalletsSection extends StatelessWidget {
+  const _WalletsSection({required this.onSeeAll});
+  final VoidCallback onSeeAll;
+  @override
+  Widget build(BuildContext context) =>
+      Consumer2<WalletProvider, SettingsProvider>(
+        builder: (context, wallet, settings, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionHeading(
+              title: 'dashboardYourWallets'.tr(),
+              onSeeAll: onSeeAll,
+            ),
+            const SizedBox(height: 12),
+            if (wallet.paymentMethods.isEmpty)
+              _EmptyState(
+                icon: CupertinoIcons.creditcard,
+                label: 'dashboardNoWallets'.tr(),
+                onTap: onSeeAll,
+              )
+            else
+              DashboardPanel(
+                child: Column(
+                  children: [
+                    for (
+                      var i = 0;
+                      i < wallet.paymentMethods.length && i < 3;
+                      i++
+                    ) ...[
+                      if (i > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Container(
+                            height: 1,
+                            color: DashboardStyle.border(context),
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.creditcard,
+                            color: Color(wallet.paymentMethods[i].color),
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              wallet.paymentMethods[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DashboardStyle.text(
+                                context,
+                                size: 12,
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              settings.formatMoney(
+                                wallet.balanceFor(
+                                  wallet.paymentMethods[i],
+                                  settings: settings,
+                                ),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textDirection: TextDirection.ltr,
+                              style: DashboardStyle.text(
+                                context,
+                                size: 12,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+}
 
-  final String title;
-  final VoidCallback? onSeeAll;
+class _ActiveTimersSection extends StatelessWidget {
+  const _ActiveTimersSection({
+    required this.onOpenProject,
+    required this.onSeeAll,
+  });
+  final ValueChanged<Project> onOpenProject;
+  final VoidCallback onSeeAll;
+  @override
+  Widget build(BuildContext context) => Consumer<ProjectProvider>(
+    builder: (context, projects, _) {
+      final active = projects.projects
+          .expand((p) => projects.getTasks(p.id))
+          .where((t) => t.isTimerRunning && !t.isArchived)
+          .toList();
+      if (active.isEmpty) return const SizedBox.shrink();
+      final byId = {
+        for (final project in projects.projects) project.id: project,
+      };
+      return Padding(
+        padding: const EdgeInsets.only(top: 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SectionHeading(title: 'activeTimers'.tr(), onSeeAll: onSeeAll),
+            const SizedBox(height: 12),
+            for (final task in active.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: DashboardPanel(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        CupertinoIcons.timer,
+                        color: DashboardStyle.orange,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () => onOpenProject(byId[task.projectId]!),
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              task.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DashboardStyle.text(
+                                context,
+                                size: 12,
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 88,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _ElapsedTimer(
+                            key: ValueKey(task.id),
+                            task: task,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(36, 36),
+                        onPressed: () =>
+                            projects.toggleTaskTimer(task.id, task.projectId),
+                        child: Icon(
+                          CupertinoIcons.pause_circle,
+                          color: DashboardStyle.orange,
+                          semanticLabel: 'dashboardPauseTimer'.tr(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _ElapsedTimer extends StatefulWidget {
+  const _ElapsedTimer({super.key, required this.task});
+  final ProjectTask task;
+  @override
+  State<_ElapsedTimer> createState() => _ElapsedTimerState();
+}
+
+class _ElapsedTimerState extends State<_ElapsedTimer> {
+  @override
+  void initState() {
+    super.initState();
+    TimerTicker.instance.acquire();
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 16, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  void dispose() {
+    TimerTicker.instance.release();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<int>(
+    valueListenable: TimerTicker.instance.tick,
+    builder: (context, _, _) {
+      var seconds = widget.task.timeSpentInSeconds;
+      if (widget.task.lastStartTime != null) {
+        seconds += DateTime.now()
+            .difference(widget.task.lastStartTime!)
+            .inSeconds;
+      }
+      if (seconds < 0) seconds = 0;
+      final label =
+          '${(seconds ~/ 3600).toString().padLeft(2, '0')}:${(seconds ~/ 60 % 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+      return Text(
+        label,
+        textDirection: TextDirection.ltr,
+        style: DashboardStyle.text(
+          context,
+          size: 12,
+          weight: FontWeight.w700,
+          color: DashboardStyle.orange,
+        ),
+      );
+    },
+  );
+}
+
+class _RecentProjectsSection extends StatelessWidget {
+  const _RecentProjectsSection({
+    required this.onOpenProject,
+    required this.onSeeAll,
+  });
+  final ValueChanged<Project> onOpenProject;
+  final VoidCallback onSeeAll;
+  @override
+  Widget build(BuildContext context) => Consumer<ProjectProvider>(
+    builder: (context, projects, _) => Padding(
+      padding: const EdgeInsets.only(top: 26),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: AppText.sectionTitle(context)),
-          if (onSeeAll != null)
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: onSeeAll,
-              child: Text('viewAll'.tr(), style: AppText.body(context)),
-            ),
+          _SectionHeading(title: 'recentProjects'.tr(), onSeeAll: onSeeAll),
+          const SizedBox(height: 12),
+          if (projects.projects.isEmpty)
+            _EmptyState(
+              icon: CupertinoIcons.briefcase,
+              label: 'noProjectsYet'.tr(),
+              onTap: onSeeAll,
+            )
+          else
+            for (final project in projects.projects.take(3))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => onOpenProject(project),
+                  child: DashboardPanel(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: DashboardStyle.orange.withValues(
+                              alpha: 0.10,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.briefcase,
+                            size: 19,
+                            color: DashboardStyle.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                project.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: DashboardStyle.text(
+                                  context,
+                                  size: 13,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              if (project.customer?.isNotEmpty == true) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  project.customer!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: DashboardStyle.text(
+                                    context,
+                                    size: 11,
+                                    color: DashboardStyle.muted(context),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${projects.getTasks(project.id).where((t) => !t.isArchived).length}',
+                          style: DashboardStyle.text(
+                            context,
+                            weight: FontWeight.w700,
+                            color: DashboardStyle.orange,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          CupertinoIcons.chevron_forward,
+                          size: 14,
+                          color: DashboardStyle.muted(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => CupertinoButton(
+    padding: EdgeInsets.zero,
+    onPressed: onTap,
+    child: DashboardPanel(
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: DashboardStyle.muted(context)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: DashboardStyle.text(
+                context,
+                size: 12,
+                color: DashboardStyle.muted(context),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(
+            CupertinoIcons.add_circled,
+            color: DashboardStyle.orange,
+            size: 22,
+          ),
+        ],
+      ),
+    ),
+  );
 }

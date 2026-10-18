@@ -2,6 +2,8 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  private var widgetChannel: PlannerWidgetChannel?
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
@@ -14,6 +16,7 @@ class MainFlutterWindow: NSWindow {
     }
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    widgetChannel = PlannerWidgetChannel(messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

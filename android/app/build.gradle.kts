@@ -9,7 +9,7 @@ plugins {
 
 
 android {
-    namespace = "com.hany.smartplanner"
+    namespace = "com.lite.smartplanner"
     compileSdk = 36 
     buildToolsVersion= "35.0.0"
     ndkVersion = "28.2.13676358"
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.hany.smartplanner" 
+        applicationId = "com.lite.smartplanner"
         minSdk = 24
         targetSdk = 36
         versionCode = flutter.versionCode

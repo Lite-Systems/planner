@@ -1,3 +1,7 @@
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
+import 'package:planner/core/utils/app_layout.dart';
+import 'package:planner/core/utils/app_tokens.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart' hide TextDirection;
@@ -14,109 +18,124 @@ class PaymentMethodsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text('paymentMethods'.tr()),
+    context.select<SettingsProvider, (bool, String, double, double)>(
+      (settings) => (
+        settings.hideAmounts,
+        settings.currency,
+        settings.usdToEgp,
+        settings.usdToSar,
       ),
+    );
+    return CupertinoPageScaffold(
+      navigationBar: AppNavigationBar(middle: Text('paymentMethods'.tr())),
       child: SafeArea(
-        child: Stack(
-          children: [
-            Consumer<WalletProvider>(
-              builder: (context, provider, child) {
-                if (provider.paymentMethods.isEmpty) {
-                  return Center(child: Text('noPaymentMethods'.tr()));
-                }
-                final settings = Provider.of<SettingsProvider>(
-                  context,
-                  listen: false,
-                );
-                return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 80),
-                  itemCount: provider.paymentMethods.length,
-                  itemBuilder: (context, index) {
-                    final method = provider.paymentMethods[index];
-                    final balance = provider.balanceFor(method, settings: settings);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: CupertinoListTile(
-                        padding: const EdgeInsets.all(12),
-                        backgroundColor: CupertinoColors.systemGrey6,
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Color(method.color),
-                            shape: BoxShape.circle,
-                          ),
-                          child: FaIcon(
-                            IconUtils.getIconData(method.icon),
-                            color: CupertinoColors.white,
-                            size: 20,
-                          ),
+        child: AppLayout.constrain(
+          Stack(
+            children: [
+              Consumer<WalletProvider>(
+                builder: (context, provider, child) {
+                  if (provider.paymentMethods.isEmpty) {
+                    return Center(child: Text('noPaymentMethods'.tr()));
+                  }
+                  final settings = Provider.of<SettingsProvider>(
+                    context,
+                    listen: false,
+                  );
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: provider.paymentMethods.length,
+                    itemBuilder: (context, index) {
+                      final method = provider.paymentMethods[index];
+                      final balance = provider.balanceFor(
+                        method,
+                        settings: settings,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
                         ),
-                        title: Text(method.name),
-                        subtitle: Text(settings.formatMoney(balance)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CupertinoButton(
-                              padding: EdgeInsets.zero,
-                              onPressed: () => _showPaymentMethodDialog(
-                                context,
-                                method: method,
+                        child: Container(
+                          decoration: AppCard.container(context),
+                          child: CupertinoListTile(
+                            padding: const EdgeInsets.all(12),
+                            backgroundColor: CupertinoColors.transparent,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Color(method.color),
+                                shape: BoxShape.circle,
                               ),
-                              child: const FaIcon(
-                                FontAwesomeIcons.pen,
-                                color: CupertinoColors.systemBlue,
-                                size: 18,
+                              child: FaIcon(
+                                IconUtils.getIconData(method.icon),
+                                color: CupertinoColors.white,
+                                size: 20,
                               ),
                             ),
-                            CupertinoButton(
-                              padding: EdgeInsets.zero,
-                              onPressed: () {
-                                _confirmDelete(context, method, provider);
-                              },
-                              child: const FaIcon(
-                                FontAwesomeIcons.trashCan,
-                                color: CupertinoColors.systemRed,
-                                size: 18,
-                              ),
+                            title: Text(method.name),
+                            subtitle: Text(settings.formatMoney(balance)),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () => _showPaymentMethodDialog(
+                                    context,
+                                    method: method,
+                                  ),
+                                  child: const FaIcon(
+                                    FontAwesomeIcons.pen,
+                                    color: AppColors.primary,
+                                    size: 18,
+                                  ),
+                                ),
+                                CupertinoButton(
+                                  padding: EdgeInsets.zero,
+                                  onPressed: () {
+                                    _confirmDelete(context, method, provider);
+                                  },
+                                  child: const FaIcon(
+                                    FontAwesomeIcons.trashCan,
+                                    color: CupertinoColors.systemRed,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
+                      );
+                    },
+                  );
+                },
+              ),
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => _showPaymentMethodDialog(context),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: FaIcon(
+                        FontAwesomeIcons.plus,
+                        color: CupertinoColors.white,
+                        size: 24,
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: () => _showPaymentMethodDialog(context),
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    color: CupertinoColors.systemTeal,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: FaIcon(
-                      FontAwesomeIcons.plus,
-                      color: CupertinoColors.white,
-                      size: 24,
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+          maxWidth: 880,
         ),
       ),
     );
@@ -128,6 +147,7 @@ class PaymentMethodsScreen extends StatelessWidget {
     WalletProvider provider,
   ) {
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text(
@@ -156,6 +176,7 @@ class PaymentMethodsScreen extends StatelessWidget {
               Navigator.pop(context);
               if (!deleted) {
                 showCupertinoDialog(
+                  useRootNavigator: false,
                   context: context,
                   builder: (_) => CupertinoAlertDialog(
                     title: Text('cannotDelete'.tr()),
@@ -179,6 +200,7 @@ class PaymentMethodsScreen extends StatelessWidget {
 
   void _showPaymentMethodDialog(BuildContext context, {PaymentMethod? method}) {
     showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (_) => PaymentMethodDialog(method: method),
     );
@@ -250,8 +272,8 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        decoration: const BoxDecoration(
-          color: CupertinoColors.systemBackground,
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground(context),
           borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
         ),
         padding: EdgeInsets.only(
@@ -284,6 +306,8 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
                     final isDark =
                         CupertinoTheme.brightnessOf(context) == Brightness.dark;
                     return CupertinoSlidingSegmentedControl<PaymentMethodType>(
+                      backgroundColor: AppColors.elevatedBackground(context),
+                      thumbColor: AppColors.cardBackground(context),
                       groupValue: _selectedType,
                       children: {
                         PaymentMethodType.cash: Padding(
@@ -384,7 +408,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
                       keyboardType: TextInputType.number,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: CupertinoColors.systemGrey6,
+                        color: AppColors.elevatedBackground(context),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
@@ -408,7 +432,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
                     placeholder: 'enterMethodName'.tr(),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: CupertinoColors.systemGrey6,
+                      color: AppColors.elevatedBackground(context),
                       borderRadius: BorderRadius.circular(8),
                       border: _errorText != null
                           ? Border.all(color: CupertinoColors.systemRed)
@@ -450,7 +474,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
                 ),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: CupertinoColors.systemGrey6,
+                  color: AppColors.elevatedBackground(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
@@ -523,7 +547,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
                         decoration: BoxDecoration(
                           color: _selectedIcon == iconCode
                               ? CupertinoColors.systemTeal
-                              : CupertinoColors.systemGrey5,
+                              : AppColors.elevatedBackground(context),
                           shape: BoxShape.circle,
                         ),
                         child: FaIcon(

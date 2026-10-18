@@ -1,3 +1,5 @@
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Icons;
@@ -128,7 +130,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         widget.prefilledTaskId != null || (widget.expense?.taskId != null);
 
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
+      navigationBar: AppNavigationBar(
         middle: Text(isEdit ? 'editExpense'.tr() : 'addExpense'.tr()),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -155,10 +157,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   placeholder: 'titlePlaceholder'.tr(),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
+                    color: AppColors.cardBackground(context),
                     border: Border.all(
                       color: _titleError != null
                           ? CupertinoColors.destructiveRed
-                          : CupertinoColors.separator,
+                          : AppColors.separator(context),
                     ),
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -178,10 +181,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                         ),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
+                          color: AppColors.cardBackground(context),
                           border: Border.all(
                             color: _amountError != null
                                 ? CupertinoColors.destructiveRed
-                                : CupertinoColors.separator,
+                                : AppColors.separator(context),
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -189,12 +193,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     ),
                     const SizedBox(width: 8),
                     Consumer<SettingsProvider>(
-                      builder: (_, settings, __) => CupertinoButton(
+                      builder: (_, settings, _) => CupertinoButton(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
                         ),
-                        color: CupertinoColors.systemGrey5.resolveFrom(context),
+                        color: AppColors.elevatedBackground(context),
                         borderRadius: BorderRadius.circular(10),
                         onPressed: _pickCurrency,
                         child: Text(
@@ -214,13 +218,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: CupertinoColors.separator),
+                      border: Border.all(color: AppColors.separator(context)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(DateFormat.yMMMd().format(_date)),
+                        Text(
+                          DateFormat.yMMMd(
+                            context.locale.toString(),
+                          ).format(_date),
+                        ),
                         const Icon(
                           CupertinoIcons.calendar,
                           color: CupertinoColors.systemGrey,
@@ -233,7 +241,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               _buildField(
                 label: 'selectCategory'.tr(),
                 child: Consumer<ExpensesProvider>(
-                  builder: (_, expProvider, __) {
+                  builder: (_, expProvider, _) {
                     return _buildCategoryPicker(expProvider.categories);
                   },
                 ),
@@ -242,7 +250,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               _buildField(
                 label: 'selectPaymentMethod'.tr(),
                 child: Consumer<WalletProvider>(
-                  builder: (_, walletProvider, __) {
+                  builder: (_, walletProvider, _) {
                     return _buildPaymentMethodPicker(
                       walletProvider.paymentMethods,
                     );
@@ -257,7 +265,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   maxLines: 3,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: CupertinoColors.separator),
+                    color: AppColors.cardBackground(context),
+                    border: Border.all(color: AppColors.separator(context)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -273,27 +282,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: CupertinoColors.activeBlue.withValues(alpha: 0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: CupertinoColors.activeBlue.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          const Icon(
-            CupertinoIcons.link,
-            size: 14,
-            color: CupertinoColors.activeBlue,
-          ),
+          const Icon(CupertinoIcons.link, size: 14, color: AppColors.primary),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               'autoExpenseFromTask'.tr(),
-              style: const TextStyle(
-                fontSize: 12,
-                color: CupertinoColors.activeBlue,
-              ),
+              style: const TextStyle(fontSize: 12, color: AppColors.primary),
             ),
           ),
         ],
@@ -386,7 +386,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   Widget _buildPaymentMethodPicker(List<PaymentMethod> paymentMethods) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: CupertinoColors.separator),
+        border: Border.all(color: AppColors.separator(context)),
         borderRadius: BorderRadius.circular(10),
       ),
       child: CupertinoListTile(
@@ -417,10 +417,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _pickDate() {
     showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (_) => Container(
         height: 280,
-        color: CupertinoColors.systemBackground.resolveFrom(context),
+        color: AppColors.cardBackground(context),
         child: Column(
           children: [
             Row(
@@ -449,6 +450,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   void _pickCurrency() {
     final currencies = ['EGP', 'USD', 'SAR'];
     showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoActionSheet(
         title: Text('selectCurrency'.tr()),
@@ -473,6 +475,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   void _showPaymentMethodPicker(List<PaymentMethod> paymentMethods) {
     showCupertinoModalPopup(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoActionSheet(
         title: Text('selectPaymentMethod'.tr()),

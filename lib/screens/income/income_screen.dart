@@ -1,3 +1,4 @@
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/core/utils/app_colors.dart';
@@ -17,7 +18,7 @@ class IncomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<IncomeProvider>(
-      builder: (_, provider, _) {
+      builder: (context, provider, _) {
         context.select<SettingsProvider, (String, bool, double, double)>(
           (s) => (s.currency, s.hideAmounts, s.usdToEgp, s.usdToSar),
         );
@@ -27,7 +28,7 @@ class IncomeScreen extends StatelessWidget {
           (sum, e) => sum + settings.convert(e.amount, e.currency),
         );
         return CupertinoPageScaffold(
-          navigationBar: CupertinoNavigationBar(
+          navigationBar: AppNavigationBar(
             middle: Text('income'.tr()),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -93,15 +94,44 @@ class _IncomeList extends StatelessWidget {
   final ValueChanged<String> onDelete;
 
   Widget _header(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Text(
-        context.read<SettingsProvider>().formatMoney(total),
-        style: const TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF10B981),
-        ),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      padding: const EdgeInsets.all(20),
+      decoration: AppCard.container(
+        context,
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                CupertinoIcons.arrow_down_left,
+                color: AppColors.success,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'totalIncome'.tr(),
+                  style: AppText.cardTitle(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              context.read<SettingsProvider>().formatMoney(total),
+              style: AppText.amount(
+                context,
+                AppColors.success,
+              ).copyWith(fontSize: 30),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -125,7 +155,7 @@ class _IncomeList extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 24),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 520,
+                maxCrossAxisExtent: 600,
                 mainAxisExtent: 92,
               ),
               delegate: SliverChildBuilderDelegate(
@@ -175,25 +205,52 @@ class _IncomeTile extends StatelessWidget {
         ),
         child: Row(
           children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                CupertinoIcons.arrow_down_left,
+                size: 18,
+                color: AppColors.success,
+              ),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(income.title, style: AppText.cardTitle(context)),
+                  Text(
+                    income.title,
+                    style: AppText.cardTitle(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    '${categoryName ?? 'other'.tr()} · ${DateFormat.yMMMd().format(income.date)}',
+                    '${categoryName ?? 'other'.tr()} · ${DateFormat.yMMMd(context.locale.toString()).format(income.date)}',
                     style: AppText.caption(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Text(
-              context.read<SettingsProvider>().formatMoney(
-                income.amount,
-                income.currency,
+            const SizedBox(width: 10),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  context.read<SettingsProvider>().formatMoney(
+                    income.amount,
+                    income.currency,
+                  ),
+                  style: AppText.amount(context, AppColors.success),
+                ),
               ),
-              style: AppText.amount(context, AppColors.success),
             ),
             CupertinoButton(
               padding: const EdgeInsets.only(left: AppSpacing.sm),

@@ -305,6 +305,8 @@
     "taskDueReminderBody": "{name} started an hour ago.",
     "desktopSettings": "Desktop",
     "compactSidebar": "Compact sidebar",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
     "compactSidebarSubtitle": "Show icons only in the sidebar",
     "compactDensity": "Compact density",
     "compactDensitySubtitle": "Reduce padding on dashboard cards",
@@ -319,4 +321,28 @@
     ,"sortBy": "Sort by"
     ,"clearFilters": "Clear filters"
     ,"filterProjects": "Filters"
+    ,"macosWidget": "macOS widget"
+    ,"macosWidgetSubtitle": "Show task progress on your desktop. App lock hides widget data."
+    ,"addMacosWidget": "Add widget to macOS"
+    ,"macosWidgetInstructions": "Enable the widget above. Right-click your Mac desktop, choose Edit Widgets, search for Smart Planner, then add the small or medium widget. You can also add it from Notification Center. macOS controls placement; the app cannot add it automatically."
+    ,"openMacosWidgetSettings": "Open desktop settings"
+    ,"macosWidgetUnavailable": "Widget sharing is unavailable. Use a macOS build signed with the same Apple development team for the app and widget extension, with App Groups enabled."
+    ,"macosWidgetExtensionMissing": "The widget extension is missing from this copy of Smart Planner. Open the latest complete macOS app and try again."
+    ,"macosWidgetEnableFailed": "The widget could not be enabled. Reopen the latest macOS app and try again. Your data has not been changed."
+    ,"dashboardManagement": "Management workspace"
+    ,"dashboardFinancialOverview": "Financial overview"
+    ,"dashboardAutoUpdated": "Updated automatically"
+    ,"dashboardLocalWorkspace": "On this device"
+    ,"dashboardTotalValue": "Total value"
+    ,"dashboardAwaitingCollection": "Awaiting collection"
+    ,"dashboardAllIncome": "All recorded income"
+    ,"dashboardIncomeLessExpenses": "Income less expenses"
+    ,"dashboardYourWallets": "Your wallets"
+    ,"dashboardNoWallets": "Add your first wallet"
+    ,"dashboardViewTasks": "View tasks"
+    ,"dashboardPauseTimer": "Pause timer"
+    ,"dashboardRefreshRates": "Refresh exchange rates"
+    ,"dashboardHideAmounts": "Hide amounts"
+    ,"dashboardShowAmounts": "Show amounts"
+    ,"dashboardOpenMenu": "Open menu"
 }

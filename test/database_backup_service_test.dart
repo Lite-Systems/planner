@@ -23,7 +23,7 @@ void main() {
     });
 
     final source = File('${root.path}/planner.db')..writeAsBytesSync([1, 2, 3]);
-    final destDir = Directory('${root.path}/Caches/com.hany.smartplanner');
+    final destDir = Directory('${root.path}/Caches/com.lite.smartplanner');
     expect(destDir.existsSync(), isFalse);
 
     final backup = await DatabaseBackupService.copyDatabaseTo(

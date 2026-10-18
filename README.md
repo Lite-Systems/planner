@@ -5,19 +5,19 @@
 Smart Planner is a comprehensive freelance, project, task, and finance management app built with Flutter. It combines project tracking, time billing, income/expense management, wallets, reminders, PDF invoicing, voice input, backup/restore, and full Arabic/English localization in one offline-first app.
 
 - **App name:** Smart Planner
-- **Package:** `planner` · **Version:** 1.0.0+6
+- **Package:** `planner` · **Version:** 1.0.0+8
 - **Bundle ID (iOS):** `com.litesystems.smartplanner`
-- **UI:** Cupertino (iOS-style) with light/dark themes
+- **UI:** Responsive Cupertino with shared navy/orange styling, light/dark themes and top-bar module navigation (no sidebar)
 - **Platforms:** Android, iOS, Web, macOS, Windows, Linux
 
 ## Features
 
 ### Home Dashboard
-- Welcome header with summary cards: collected income, pending amounts, net balance
+- Welcome header with responsive wallet, pending, income and net-balance cards
 - Task progress card (total / pending / in-progress with completion %)
 - Live USD exchange-rate widget (USD → EGP / SAR) with manual refresh and last-update timestamp
-- Wallet balance strip (horizontal on mobile, wrapped grid on desktop)
-- Active timers list with per-second ticking task cards
+- Compact wallet previews
+- Active timers list with per-second elapsed-label updates
 - Recent projects, recent income (3), and recent expenses (3) previews
 
 ### Projects
@@ -80,18 +80,19 @@ Smart Planner is a comprehensive freelance, project, task, and finance managemen
 | `DatabaseHelper` | `lib/core/services/database_helper.dart` | Singleton SQLite (`planner.db`, v21, legacy `masrofy.db` auto-migrated). 9 tables: projects, tasks, members, task-assignees, payment methods, income, income categories, expenses, expense categories. Full CRUD + usage counters + reset. Desktop uses `sqflite_common_ffi`. |
 | `DatabaseBackupService` | `lib/core/services/database_backup_service.dart` | WAL checkpoint + copy, share backup (`.db` via `share_plus`), save-to-storage picker, import picker with validation (must contain `projects` + `tasks`), safe database replacement. |
 | `PdfService` | `lib/core/services/pdf_service.dart` | A4 RTL/LTR invoices with Arabic Almarai font, app logo, header (project/customer/date), summary tables, per-task cards (price, paid badge, type badge, time-spent, dates, timer range, subtasks checklist), page footer, draft watermark. Print / share / save / preview. Content toggles for hour-cost, task time, task type, subtasks. |
-| `NotificationService` | `lib/core/services/notification_service.dart` | `flutter_local_notifications` + `timezone`. Init (Android + iOS, permission request), task-due reminders (start date + 1h, skipped if past), cancel on update/delete/complete/archive, FCM foreground → local notification. |
+| `NotificationService` | `lib/core/services/notification_service.dart` | `flutter_local_notifications` + `timezone`. Init (Android + iOS, permission request), task-due reminders (start date + 1h, skipped if past), cancel on update/delete/complete/archive. |
 | `CurrencyService` | `lib/core/services/currency_service.dart` | Fetches latest USD → EGP/SAR rates from `https://open.er-api.com/v6/latest/USD` (8s timeout, null-safe fallback to saved rates). |
 | `BiometricService` | `lib/core/services/biometric_service.dart` | `local_auth` authentication (`canCheckBiometrics \|\| isDeviceSupported`, device PIN fallback allowed, persists across backgrounding). |
 
-Supporting utilities: `currency_helper` (normalize/format/convert/symbols), `speech_parser` (bilingual voice parsing), `file_persist` (persist picked images), `app_layout` (600/1024 breakpoints, sidebar/drawer, sheets, desktop scroll behavior), `app_thems` (Cupertino light/dark themes), `app_tokens`/`app_colors` (design tokens), `enums`, `icon_utils`, `restart_widget` (full restart after restore/reset), `app_lock_gate` (auto-lock overlay).
+Supporting utilities: `currency_helper` (normalize/format/convert/symbols), `speech_parser` (bilingual voice parsing), `file_persist` (persist picked images), `app_layout` (600/1024 breakpoints, responsive content, sheets, desktop scroll behavior), `app_thems` (Cupertino light/dark themes), `app_tokens`/`app_colors` (shared design tokens), `app_navigation_bar`/`app_list_section` (consistent page headers and grouped panels), `enums`, `icon_utils`, `restart_widget` (full restart after restore/reset), `app_lock_gate` (auto-lock overlay).
 
 ## App Protection & Settings
 
 - Optional biometric/PIN app lock with auto-lock when the app goes to background (`AppLockGate`)
-- Splash screen with animated gradient + settings preload + saved-locale restore
-- Settings screen: language, dark mode, biometric lock, hide amounts, module toggles (expenses, todos), currencies, hourly cost, USD rates, print-content toggles, desktop options (compact sidebar/density, remember last section, keyboard shortcuts), backup/restore/reset
-- Desktop keyboard shortcuts: `Ctrl/Cmd + N` (new item), `Ctrl/Cmd + 1..5` (switch section), `Esc` (close drawer)
+- Compact splash screen with settings preload and saved-locale restore; no artificial animation delay
+- Settings screen: language, dark mode, biometric lock, hide amounts, module toggles (expenses, todos), currencies, hourly cost, USD rates, print-content toggles, desktop options (compact density, remember last section, keyboard shortcuts), backup/restore/reset
+- Top-bar icons switch modules on phones and desktops and stay available in editors; disabled modules are omitted
+- Desktop keyboard shortcuts: `Ctrl/Cmd + N` (new item), `Ctrl/Cmd + 1..6` (switch visible module), `Esc` (back/close local popup)
 - Update prompt via `upgrader`, version footer in Settings
 
 ## Localization
@@ -121,7 +122,6 @@ Supporting utilities: `currency_helper` (normalize/format/convert/symbols), `spe
 | `flutter_local_notifications`, `timezone` | Task reminders |
 | `image_picker` | Project covers, task attachments |
 | `file_picker`, `share_plus` | Backup save/import/share, PDF share |
-| `firebase_core`, `firebase_messaging` | Push notifications (foreground → local) |
 | `upgrader` | Update prompt |
 | `font_awesome_flutter` | Icons |
 
@@ -129,8 +129,7 @@ Supporting utilities: `currency_helper` (normalize/format/convert/symbols), `spe
 
 ```
 lib/
-  main.dart                  # Firebase init, providers, EasyLocalization, AppShell, FCM wiring
-  firebase_options.dart
+  main.dart                  # Providers, EasyLocalization, AppShell (Firebase removed 2026-10-18)
   models/                    # project, project_task, project_member, payment_method,
                              # income, income_category, expense, expense_category
   providers/                 # settings, wallet, project, income, expenses, locale

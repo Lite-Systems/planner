@@ -1,3 +1,6 @@
+import 'package:planner/core/utils/app_tokens.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
+import 'package:planner/core/utils/app_layout.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:planner/models/income_category.dart';
@@ -11,7 +14,7 @@ class IncomeCategoriesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
+      navigationBar: AppNavigationBar(
         middle: Text('incomeCategories'.tr()),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -20,43 +23,53 @@ class IncomeCategoriesScreen extends StatelessWidget {
         ),
       ),
       child: SafeArea(
-        child: Consumer<IncomeProvider>(
-          builder: (_, provider, __) {
-            return ListView(
-              children: provider.categories
-                  .map(
-                    (cat) => CupertinoListTile(
-                      title: Text(cat.name),
-                      trailing: CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () async {
-                          final deleted = await provider.deleteCategory(cat.id);
-                          if (!deleted && context.mounted) {
-                            showCupertinoDialog(
-                              context: context,
-                              builder: (_) => CupertinoAlertDialog(
-                                title: Text('cannotDelete'.tr()),
-                                content: Text('categoryInUse'.tr()),
-                                actions: [
-                                  CupertinoDialogAction(
-                                    child: Text('ok'.tr()),
-                                    onPressed: () => Navigator.pop(context),
+        child: AppLayout.constrain(
+          Consumer<IncomeProvider>(
+            builder: (_, provider, _) {
+              return ListView(
+                children: provider.categories
+                    .map(
+                      (cat) => Container(
+                        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        decoration: AppCard.container(context),
+                        child: CupertinoListTile(
+                          title: Text(cat.name),
+                          trailing: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: () async {
+                              final deleted = await provider.deleteCategory(
+                                cat.id,
+                              );
+                              if (!deleted && context.mounted) {
+                                showCupertinoDialog(
+                                  useRootNavigator: false,
+                                  context: context,
+                                  builder: (_) => CupertinoAlertDialog(
+                                    title: Text('cannotDelete'.tr()),
+                                    content: Text('categoryInUse'.tr()),
+                                    actions: [
+                                      CupertinoDialogAction(
+                                        child: Text('ok'.tr()),
+                                        onPressed: () => Navigator.pop(context),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            );
-                          }
-                        },
-                        child: const Icon(
-                          CupertinoIcons.delete,
-                          color: CupertinoColors.systemRed,
+                                );
+                              }
+                            },
+                            child: const Icon(
+                              CupertinoIcons.delete,
+                              color: CupertinoColors.systemRed,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  )
-                  .toList(),
-            );
-          },
+                    )
+                    .toList(),
+              );
+            },
+          ),
+          maxWidth: 880,
         ),
       ),
     );
@@ -65,6 +78,7 @@ class IncomeCategoriesScreen extends StatelessWidget {
   void _showDialog(BuildContext context, IncomeCategory? existing) {
     final controller = TextEditingController(text: existing?.name ?? '');
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (_) => CupertinoAlertDialog(
         title: Text(
@@ -72,7 +86,10 @@ class IncomeCategoriesScreen extends StatelessWidget {
         ),
         content: Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: CupertinoTextField(controller: controller),
+          child: CupertinoTextField(
+            decoration: AppCard.container(context, radius: AppRadius.md),
+            controller: controller,
+          ),
         ),
         actions: [
           CupertinoDialogAction(

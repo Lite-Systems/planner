@@ -24,10 +24,10 @@ class SettingsProvider with ChangeNotifier {
   double _usdToSar = 3.75;
   String _lastRatesUpdate = '';
   bool _isFetchingRates = false;
-  bool _compactSidebar = false;
   bool _compactDensity = false;
   bool _rememberLastSection = false;
   bool _keyboardShortcuts = true;
+  bool _macosWidgetEnabled = false;
   String _lastSection = 'home';
   List<String> listCurency = CurrencyHelper.codes;
 
@@ -50,10 +50,10 @@ class SettingsProvider with ChangeNotifier {
   double get usdToSar => _usdToSar;
   String get lastRatesUpdate => _lastRatesUpdate;
   bool get isFetchingRates => _isFetchingRates;
-  bool get compactSidebar => _compactSidebar;
   bool get compactDensity => _compactDensity;
   bool get rememberLastSection => _rememberLastSection;
   bool get keyboardShortcuts => _keyboardShortcuts;
+  bool get macosWidgetEnabled => _macosWidgetEnabled;
   String get lastSection => _lastSection;
   double get cardPadding => _compactDensity ? 12 : 20;
   double get listGap => _compactDensity ? 6 : 12;
@@ -81,10 +81,10 @@ class SettingsProvider with ChangeNotifier {
     _usdToEgp = prefs.getDouble('usdToEgp') ?? 48.50;
     _usdToSar = prefs.getDouble('usdToSar') ?? 3.75;
     _lastRatesUpdate = prefs.getString('lastRatesUpdate') ?? '';
-    _compactSidebar = prefs.getBool('compactSidebar') ?? false;
     _compactDensity = prefs.getBool('compactDensity') ?? false;
     _rememberLastSection = prefs.getBool('rememberLastSection') ?? false;
     _keyboardShortcuts = prefs.getBool('keyboardShortcuts') ?? true;
+    _macosWidgetEnabled = prefs.getBool('macosWidgetEnabled') ?? false;
     _lastSection = prefs.getString('lastSection') ?? 'home';
     _areSettingsLoaded = true;
     notifyListeners();
@@ -242,14 +242,6 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setCompactSidebar(bool value) async {
-    if (_compactSidebar == value) return;
-    final prefs = await SharedPreferences.getInstance();
-    _compactSidebar = value;
-    await prefs.setBool('compactSidebar', value);
-    notifyListeners();
-  }
-
   Future<void> setCompactDensity(bool value) async {
     if (_compactDensity == value) return;
     final prefs = await SharedPreferences.getInstance();
@@ -280,5 +272,13 @@ class SettingsProvider with ChangeNotifier {
     if (!_rememberLastSection) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('lastSection', value);
+  }
+
+  Future<void> setMacosWidgetEnabled(bool value) async {
+    if (_macosWidgetEnabled == value) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('macosWidgetEnabled', value);
+    _macosWidgetEnabled = value;
+    notifyListeners();
   }
 }

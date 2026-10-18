@@ -21,7 +21,7 @@ class AppLayout {
   bool get isCompact => width < compactMax;
   bool get isMedium => width >= compactMax && width < mediumMax;
   bool get isExpanded => width >= mediumMax;
-  bool get hasSidebar => !isCompact;
+  bool get isDesktop => !isCompact;
 
   static Widget constrain(Widget child, {double maxWidth = formMaxWidth}) {
     return LayoutBuilder(
@@ -76,7 +76,7 @@ class AppLayoutScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(AppLayoutScope oldWidget) =>
-      layout.hasSidebar != oldWidget.layout.hasSidebar ||
+      layout.isDesktop != oldWidget.layout.isDesktop ||
       layout.isExpanded != oldWidget.layout.isExpanded;
 }
 

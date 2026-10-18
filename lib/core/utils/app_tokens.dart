@@ -118,7 +118,7 @@ abstract final class AppText {
   );
 
   static Color _label(BuildContext context) =>
-      CupertinoColors.label.resolveFrom(context);
+      AppColors.label.resolveFrom(context);
 }
 
 // ── Elevation ────────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ abstract final class AppShadows {
   }) => [
     BoxShadow(
       color: tint.withValues(alpha: alpha),
-      blurRadius: AppLayout.of(context).hasSidebar ? 10 : 18,
+      blurRadius: AppLayout.of(context).isDesktop ? 10 : 18,
       offset: const Offset(0, 8),
     ),
   ];
@@ -163,9 +163,8 @@ abstract final class AppCard {
   }) => BoxDecoration(
     color: color ?? AppColors.cardBackground(context),
     borderRadius: BorderRadius.circular(radius),
-    border:
-        border ?? Border.all(color: AppColors.separator(context), width: 0.5),
-    boxShadow: shadows ?? AppShadows.card(context),
+    border: border ?? Border.all(color: AppColors.separator(context)),
+    boxShadow: shadows,
   );
 }
 

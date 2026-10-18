@@ -1,3 +1,5 @@
+import 'package:planner/core/utils/app_colors.dart';
+import 'package:planner/core/widgets/app_navigation_bar.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -210,10 +212,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Widget _buildMicSuffix(
-    TextEditingController controller,
-    String fieldName,
-  ) {
+  Widget _buildMicSuffix(TextEditingController controller, String fieldName) {
     return ValueListenableBuilder<String?>(
       valueListenable: _listeningFieldNotifier,
       builder: (context, listeningField, _) {
@@ -246,6 +245,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   void _confirmDeleteTask(BuildContext context) {
     showCupertinoDialog(
+      useRootNavigator: false,
       context: context,
       builder: (context) => CupertinoAlertDialog(
         title: Text('deleteTask'.tr()),
@@ -275,7 +275,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
+      navigationBar: AppNavigationBar(
         middle: Text(widget.task == null ? 'addTask'.tr() : 'editTask'.tr()),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -316,6 +316,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     newTimeSpentSeconds != widget.task!.timeSpentInSeconds) {
                   // Show warning
                   final confirmed = await showCupertinoDialog<bool>(
+                    useRootNavigator: false,
                     context: context,
                     builder: (context) => CupertinoAlertDialog(
                       title: Text('recordedTime'.tr()),
@@ -388,6 +389,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 ValueListenableBuilder<String?>(
                   valueListenable: _listeningFieldNotifier,
                   builder: (context, listeningField, _) => CupertinoTextField(
+                    decoration: AppCard.container(
+                      context,
+                      radius: AppRadius.md,
+                    ),
                     controller: nameController,
                     placeholder: listeningField == 'name'
                         ? 'listening'.tr()
@@ -400,6 +405,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 ValueListenableBuilder<String?>(
                   valueListenable: _listeningFieldNotifier,
                   builder: (context, listeningField, _) => CupertinoTextField(
+                    decoration: AppCard.container(
+                      context,
+                      radius: AppRadius.md,
+                    ),
                     controller: detailsController,
                     placeholder: listeningField == 'details'
                         ? 'listening'.tr()
@@ -414,6 +423,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   children: [
                     Expanded(
                       child: CupertinoTextField(
+                        decoration: AppCard.container(
+                          context,
+                          radius: AppRadius.md,
+                        ),
                         controller: costController,
                         placeholder: 'cost'.tr(),
                         keyboardType: const TextInputType.numberWithOptions(
@@ -421,7 +434,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         ),
                         padding: const EdgeInsets.all(AppSpacing.md),
                         prefix: Padding(
-                          padding: const EdgeInsets.only(left: AppSpacing.sm, right: AppSpacing.sm),
+                          padding: const EdgeInsets.only(
+                            left: AppSpacing.sm,
+                            right: AppSpacing.sm,
+                          ),
                           child: Text(_currency),
                         ),
                       ),
@@ -430,6 +446,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     SizedBox(width: AppSpacing.md),
                     GestureDetector(
                       onTap: () => showCupertinoModalPopup(
+                        useRootNavigator: false,
                         context: context,
                         builder: (_) => CupertinoActionSheet(
                           title: Text('selectCurrency'.tr()),
@@ -472,6 +489,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 // Estimated Time Input
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: estimatedTimeController,
                   placeholder: 'estimatedTimePlaceholder'.tr(),
                   keyboardType: const TextInputType.numberWithOptions(
@@ -479,7 +497,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   ),
                   padding: const EdgeInsets.all(AppSpacing.md),
                   suffix: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                     child: Text(
                       'hours'.tr(),
                       style: TextStyle(color: CupertinoColors.systemGrey),
@@ -489,6 +509,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 // Hourly Rate Input
                 CupertinoTextField(
+                  decoration: AppCard.container(context, radius: AppRadius.md),
                   controller: hourlyRateController,
                   placeholder: 'hourCost'.tr(),
                   keyboardType: const TextInputType.numberWithOptions(
@@ -496,7 +517,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   ),
                   padding: const EdgeInsets.all(AppSpacing.md),
                   suffix: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
                     child: Text(
                       '/ ${'hours'.tr()}',
                       style: TextStyle(color: CupertinoColors.systemGrey),
@@ -520,6 +543,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       children: [
                         Expanded(
                           child: CupertinoTextField(
+                            decoration: AppCard.container(
+                              context,
+                              radius: AppRadius.md,
+                            ),
                             controller: hoursController,
                             placeholder: 'hours'.tr(),
                             keyboardType: TextInputType.number,
@@ -540,6 +567,10 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: CupertinoTextField(
+                            decoration: AppCard.container(
+                              context,
+                              radius: AppRadius.md,
+                            ),
                             controller: minutesController,
                             placeholder: 'minutes'.tr(),
                             keyboardType: TextInputType.number,
@@ -612,7 +643,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 if (_expectedCost > 0) ...[
                   const SizedBox(height: AppSpacing.sm),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                    ),
                     child: Row(
                       children: [
                         Text(
@@ -625,7 +658,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         Text(
                           '${_expectedCost.toStringAsFixed(2)} $_currency',
                           style: TextStyle(
-                            color: CupertinoColors.activeBlue,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -639,7 +672,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey6,
+                    color: AppColors.elevatedBackground(context),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Row(
@@ -650,23 +683,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         padding: EdgeInsets.zero,
                         child: Text(
                           DateFormat('yyyy-MM-dd', 'en').format(startDate),
-                          style: const TextStyle(
-                            color: CupertinoColors.activeBlue,
-                          ),
+                          style: const TextStyle(color: AppColors.primary),
                         ),
                         onPressed: () {
                           showCupertinoModalPopup(
+                            useRootNavigator: false,
                             context: context,
                             builder: (context) => Container(
                               height: 216,
                               padding: const EdgeInsets.only(top: 6.0),
                               margin: EdgeInsets.only(
-                                bottom: MediaQuery.viewInsetsOf(
-                                  context,
-                                ).bottom,
+                                bottom: MediaQuery.viewInsetsOf(context).bottom,
                               ),
-                              color: CupertinoColors.systemBackground
-                                  .resolveFrom(context),
+                              color: AppColors.cardBackground(context),
                               child: SafeArea(
                                 top: false,
                                 child: CupertinoDatePicker(
@@ -692,7 +721,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey6,
+                    color: AppColors.elevatedBackground(context),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Row(
@@ -705,23 +734,19 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           endDate != null
                               ? DateFormat('yyyy-MM-dd', 'en').format(endDate!)
                               : 'notSet'.tr(),
-                          style: const TextStyle(
-                            color: CupertinoColors.activeBlue,
-                          ),
+                          style: const TextStyle(color: AppColors.primary),
                         ),
                         onPressed: () {
                           showCupertinoModalPopup(
+                            useRootNavigator: false,
                             context: context,
                             builder: (context) => Container(
                               height: 216,
                               padding: const EdgeInsets.only(top: 6.0),
                               margin: EdgeInsets.only(
-                                bottom: MediaQuery.viewInsetsOf(
-                                  context,
-                                ).bottom,
+                                bottom: MediaQuery.viewInsetsOf(context).bottom,
                               ),
-                              color: CupertinoColors.systemBackground
-                                  .resolveFrom(context),
+                              color: AppColors.cardBackground(context),
                               child: SafeArea(
                                 top: false,
                                 child: CupertinoDatePicker(
@@ -746,7 +771,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 Text('status'.tr()),
                 const SizedBox(height: AppSpacing.sm),
-                CupertinoSegmentedControl<String>(
+                CupertinoSlidingSegmentedControl<String>(
+                  backgroundColor: AppColors.elevatedBackground(context),
+                  thumbColor: AppColors.cardBackground(context),
                   groupValue: status,
                   children: statusMap.map(
                     (key, value) => MapEntry(
@@ -758,6 +785,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                   ),
                   onValueChanged: (value) {
+                    if (value == null) return;
                     setState(() {
                       status = value;
                     });
@@ -766,18 +794,21 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 const SizedBox(height: AppSpacing.lg),
                 Text('type'.tr()),
                 const SizedBox(height: AppSpacing.sm),
-                CupertinoSegmentedControl<String>(
+                CupertinoSlidingSegmentedControl<String>(
+                  backgroundColor: AppColors.elevatedBackground(context),
+                  thumbColor: AppColors.cardBackground(context),
                   groupValue: type,
                   children: typeMap.map(
                     (k, value) => MapEntry(
                       k,
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(value.tr()),
+                        child: Text(value),
                       ),
                     ),
                   ),
                   onValueChanged: (value) {
+                    if (value == null) return;
                     setState(() {
                       type = value;
                     });
@@ -824,12 +855,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                             decoration: BoxDecoration(
                               color: selected
                                   ? color.withValues(alpha: 0.2)
-                                  : CupertinoColors.systemGrey6,
+                                  : AppColors.elevatedBackground(context),
                               borderRadius: BorderRadius.circular(AppRadius.xl),
                               border: Border.all(
                                 color: selected
                                     ? color
-                                    : CupertinoColors.systemGrey4,
+                                    : AppColors.separator(context),
                               ),
                             ),
                             child: Row(
@@ -875,7 +906,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey6,
+                    color: AppColors.elevatedBackground(context),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Column(
@@ -885,6 +916,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         children: [
                           Text('isPaid'.tr()),
                           CupertinoSwitch(
+                            activeTrackColor: AppColors.primary,
                             value: isPaid,
                             onChanged: (value) {
                               setState(() {
@@ -896,7 +928,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                       ),
                       if (isPaid) ...[
                         const Padding(
-                          padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                          padding: EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm,
+                          ),
                           child: Divider(height: 1),
                         ),
                         Consumer<WalletProvider>(
@@ -914,11 +948,12 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                   child: Text(
                                     method?.name ?? 'select'.tr(),
                                     style: const TextStyle(
-                                      color: CupertinoColors.activeBlue,
+                                      color: AppColors.primary,
                                     ),
                                   ),
                                   onPressed: () {
                                     showCupertinoModalPopup(
+                                      useRootNavigator: false,
                                       context: context,
                                       builder: (context) => CupertinoActionSheet(
                                         title: Text('selectPaymentMethod'.tr()),
@@ -959,7 +994,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: CupertinoColors.systemGrey6,
+                    color: AppColors.elevatedBackground(context),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Column(
@@ -1016,21 +1051,28 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         valueListenable: _listeningFieldNotifier,
                         builder: (context, listeningField, _) =>
                             CupertinoTextField(
-                          controller: todoController,
-                          placeholder: listeningField == 'todo'
-                              ? 'listening'.tr()
-                              : 'todoPlaceholder'.tr(),
-                          padding: const EdgeInsets.all(10),
-                          suffix: _buildMicSuffix(todoController, 'todo'),
-                          onSubmitted: (value) {
-                            if (value.isNotEmpty) {
-                              setState(() {
-                                subTasks.add({'title': value, 'isDone': false});
-                                todoController.clear();
-                              });
-                            }
-                          },
-                        ),
+                              decoration: AppCard.container(
+                                context,
+                                radius: AppRadius.md,
+                              ),
+                              controller: todoController,
+                              placeholder: listeningField == 'todo'
+                                  ? 'listening'.tr()
+                                  : 'todoPlaceholder'.tr(),
+                              padding: const EdgeInsets.all(10),
+                              suffix: _buildMicSuffix(todoController, 'todo'),
+                              onSubmitted: (value) {
+                                if (value.isNotEmpty) {
+                                  setState(() {
+                                    subTasks.add({
+                                      'title': value,
+                                      'isDone': false,
+                                    });
+                                    todoController.clear();
+                                  });
+                                }
+                              },
+                            ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       if (subTasks.isEmpty)
@@ -1052,9 +1094,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                               CupertinoTheme.brightnessOf(context) ==
                                   Brightness.dark
                               ? ThemeData.dark().copyWith(
-                                  scaffoldBackgroundColor: const Color(
-                                    0xFF1C1C1E,
-                                  ),
+                                  scaffoldBackgroundColor:
+                                      AppColors.surfaceDarkAlt,
                                 )
                               : ThemeData.light(),
                           child: Material(
@@ -1127,7 +1168,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                                       ReorderableDragStartListener(
                                         index: index,
                                         child: Container(
-                                          padding: EdgeInsets.only(left: AppSpacing.sm),
+                                          padding: EdgeInsets.only(
+                                            left: AppSpacing.sm,
+                                          ),
                                           child: const FaIcon(
                                             FontAwesomeIcons.gripLines,
                                             color: CupertinoColors.systemGrey,

@@ -10,5 +10,11 @@ PRODUCT_NAME = planner
 // The application's bundle identifier
 PRODUCT_BUNDLE_IDENTIFIER = com.litesystems.smartplanner
 
+// Use the same development team as the iOS Runner. Ad-hoc signing cannot
+// authorize the shared container used by the macOS WidgetKit extension.
+DEVELOPMENT_TEAM = J42PT5X89M
+CODE_SIGN_IDENTITY = Apple Development
+PLANNER_APP_GROUP = $(DEVELOPMENT_TEAM).com.litesystems.smartplanner
+
 // The copyright displayed in application information
 PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.

@@ -1,0 +1,125 @@
+{
+  "schema": "picalica-submission",
+  "draft_status": "draft-candidate",
+  "prepared_at": "2026-10-18",
+  "marketplace": "Picalica",
+  "product": {
+    "name": "Smart Planner",
+    "name_ar": "المخطط الذكي",
+    "title_ar_proposed": "المخطط الذكي - إدارة المشاريع والمهام والمالية",
+    "title_ar_note": "يتّبع نمط العنوان في إرشادات بيكاليكا: اسم المنتج ثم وصف مختصر واضح. الحد الأقصى للطول غير موثّق في الصفحات المتاحة.",
+    "summary_ar": "تطبيق جاهز ومكتمل لإدارة المشاريع والمهام وتتبّع الوقت والإيرادات والمصروفات والمحافظ، يعمل دون إنترنت مع قاعدة بيانات SQLite محلية، بواجهة عربية/إنجليزية كاملة (RTL) وطباعة فواتير PDF. شيفرة مصدرية جاهزة للتعديل مبنية بـ Flutter.",
+    "category_proposed": "تطبيقات",
+    "category_note": "التصنيف المقترح: «تطبيقات» (تطبيقات جوال في الأساس مع إصدارات سطح مكتب وخارطة ويب)؛ يلزم التأكد من قائمة التصنيفات الدقيقة داخل نموذج رفع المنتج.",
+    "tags": [
+      "flutter",
+      "إدارة مشاريع",
+      "مهام",
+      "مالية",
+      "فواتير PDF",
+      "عربي",
+      "offline-first",
+      "SQLite"
+    ],
+    "version": "1.0.0+8",
+    "version_source": "pubspec.yaml (يلاحظ أن README.md تذكر قديمة 1.0.0+6)",
+    "primary_language": "ar",
+    "other_languages": [
+      "en"
+    ],
+    "source_stack": [
+      "Flutter ^3.47.2 (fvm)",
+      "Dart SDK ^3.12.1",
+      "SQLite (sqflite / sqflite_common_ffi)",
+      "Firebase Messaging (اختياري)"
+    ],
+    "platforms_claimed": [
+      "Android",
+      "iOS",
+      "Web",
+      "macOS",
+      "Windows",
+      "Linux"
+    ],
+    "platforms_verified": [
+      "فحوص تحليل واختبارات ناجحة بعد إزالة Firebase (2026-10-18)؛ بناءات release حديثة لمُلَّت بعد"
+    ],
+    "preview_url": null,
+    "preview_url_note": "رابط معاينة مباشر غير متوفر؛ موصى به بقوة في إرشادات بيكاليكا"
+  },
+  "pricing": {
+    "currency": "USD",
+    "notes": "السعر العام 50 دولار هو السعر الظاهر للمشتري قبل الضرائب، وجميع الأرقام تقديرات.",
+    "personal_license_price": 50,
+    "personal_price_fit": "داخل نطاق أسعار التطبيقات الشخصية في بيكاليكا (10–100) بتاريخ الفحص 2026-10-18",
+    "commercial_license_price": null,
+    "commercial_license_proposed": 120,
+    "commercial_proposal_status": "مقترح قابل للمراجعة — لم يختاره المستخدم صراحة",
+    "exclusivity": "non-exclusive",
+    "exclusivity_note": "غير حصرية: يتوافق مع خطة متابعة البيع عبر أكثر من قناة (المشروع يحمل بالفعل حزمة نشر جوجل بلاي). عمولة بيكاليكا للمنتجات غير الحصرية 20% تُقتطع من البائع.",
+    "commission": {
+      "exclusive_percent": 10,
+      "non_exclusive_percent": 20,
+      "source": "https://picalica.com/pages/faq (فحص 2026-10-18)"
+    },
+    "seller_net_estimates": {
+      "personal_50_non_exclusive": 40,
+      "commercial_120_non_exclusive": 96,
+      "note": "تقديرات صافي البائع قبل أي رسوم أخرى لم تُوثّق في الصفحات الرسمية المتاحة"
+    }
+  },
+  "assets": {
+    "output_folder": "docs/picalica-publish/",
+    "list": {
+      "index": "README.md",
+      "listing_copy": "listing-ar.md",
+      "buyer_guide": "buyer-guide-ar.html",
+      "pricing": "pricing-licenses.md",
+      "release_notes": "release-notes.md",
+      "platform_requirements": "platform-requirements.md",
+      "upload_checklist": "upload-checklist.md",
+      "verification": "verification.md",
+      "presentation": "presentation-assets.md + cover-template.html"
+    },
+    "cover_image_target_px": {
+      "width": 1700,
+      "height": 970
+    },
+    "cover_source": "إرشادات البائعين: المقاس المناسب للصورة الرئيسية 1700 × 970 بيكسل (فحص 2026-10-18)",
+    "cover_rendered": "picalica-cover-1700x970.png (Chrome headless + فحص بصري ثلاث جولات، 2026-10-18)"
+  },
+  "unresolved": {
+    "seller_account": null,
+    "seller_identity_note": "غير موثّق أن حساب بائع بيكاليكا جاهز؛ يتطلّب نموذج انضمام منفصلاً (https://picalica.com/apply)",
+    "standard_form_field_limits": null,
+    "standard_form_note": "مركز المساعدة support.picalica.com غير قابل للوصول من هذه الجلسة؛ تأكيد حقول النموذج وحدود الطول وعدد صور المعرض يبقى غير مكتمل",
+    "minimum_gallery_count": null,
+    "rights_confirmation_for": [
+      "assets/images/splash.png",
+      "assets/logo/logo.png",
+      "assets/icons/*.png"
+    ],
+    "firebase_project_status": null,
+    "firebase_resolved_note": "حُلّ بتاريخ 2026-10-18: أُزيل lib/firebase_options.dart وحزم Firebase من pubspec.yaml مع تعديل main.dart؛ الإشعارات محلية فقط.",
+    "presentation_screens_source": "docs/picalica-publish/screens/ (screen-01-home, screen-02-expenses, screen-03-settings — 1080×2340) المعتمدة لمعرض المنتج"
+  },
+  "sources_checked": [
+    {
+      "url": "https://picalica.com/pages/guidelines",
+      "date": "2026-10-18"
+    },
+    {
+      "url": "https://picalica.com/pages/licenses",
+      "date": "2026-10-18"
+    },
+    {
+      "url": "https://picalica.com/pages/faq",
+      "date": "2026-10-18"
+    },
+    {
+      "url": "https://support.picalica.com/adding-product",
+      "date": "2026-10-18",
+      "status": "غير قابل للوصول مباشرة؛ الأجزاء المُؤمَّنة مأخوذة من مقتطف بحثي فقط"
+    }
+  ]
+}

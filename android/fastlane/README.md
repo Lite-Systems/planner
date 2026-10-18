@@ -31,6 +31,14 @@ Build Flutter AppBundle (AAB) for release
 
 Deploy AAB to Google Play Internal Testing Track
 
+### android upload_to_play_store
+
+```sh
+[bundle exec] fastlane android upload_to_play_store
+```
+
+Upload AAB to Google Play Internal Testing Track
+
 ----
 
 This README.md is auto-generated and will be re-generated every time [_fastlane_](https://fastlane.tools) is run.
