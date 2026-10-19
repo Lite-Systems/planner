@@ -31,10 +31,10 @@ Build Flutter AppBundle (AAB) for release
 
 Deploy AAB to Google Play Internal Testing Track
 
-### android upload_to_play_store
+### android upload_aab
 
 ```sh
-[bundle exec] fastlane android upload_to_play_store
+[bundle exec] fastlane android upload_aab
 ```
 
 Upload AAB to Google Play Internal Testing Track
