@@ -1,0 +1,10 @@
+// Certificate-free CI previews only. Apply through XCODE_XCCONFIG_FILE so
+// Runner, PlannerWidget and embedded code all use the same signing mode.
+// Do not include this file from the normal Debug/Profile/Release configs:
+// local Apple signing is required for the widget's shared App Group.
+CODE_SIGN_IDENTITY = -
+CODE_SIGN_STYLE = Manual
+CODE_SIGNING_ALLOWED = YES
+CODE_SIGNING_REQUIRED = YES
+PROVISIONING_PROFILE_SPECIFIER =
+PROVISIONING_PROFILE =

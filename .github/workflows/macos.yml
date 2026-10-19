@@ -46,7 +46,19 @@ jobs:
         run: flutter pub get --enforce-lockfile
 
       - name: Build macOS release
-        run: flutter build macos --release --no-pub
+        env:
+          # Override every Xcode target without changing local Apple signing.
+          # Ad-hoc signing needs no certificate/private key on the runner.
+          XCODE_XCCONFIG_FILE: ${{ github.workspace }}/macos/Runner/Configs/CI.xcconfig
+        run: |
+          flutter build macos --release --no-pub
+          ruby macos/Tests/check_ci_signing.rb
+
+      - name: Describe CI signing limitations
+        run: |
+          echo '::notice::This CI DMG is ad-hoc signed, not notarized. Widget App Group sharing requires an Apple-signed build.'
+          echo '### macOS CI build' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Certificate-free, ad-hoc-signed test build. Not notarized; macOS widget sharing requires the app and extension to be signed with the same Apple team.' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate macOS app
         run: |
