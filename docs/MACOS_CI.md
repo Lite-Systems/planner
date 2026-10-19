@@ -23,6 +23,10 @@ It fails if either target reverts to certificate-based signing or disables
 signing entirely. The workflow also checks both CPU architectures, validates
 the DMG and uploads the artifact as before.
 
+The architecture checks pass each binary filename before `-verify_arch`;
+placing the filename after the architecture list makes `lipo` interpret it as
+an architecture and abort validation even when the build succeeded.
+
 ## Limitations
 
 - This CI DMG is not notarized and is not an App Store/distribution-signed build.
