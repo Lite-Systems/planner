@@ -13,6 +13,7 @@ import 'package:path/path.dart';
 
 import '../../models/project.dart';
 import '../../models/project_task.dart';
+import '../../models/sticky_note.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -37,7 +38,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 22,
+      version: 23,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -195,6 +196,16 @@ CREATE TABLE incomes (
   FOREIGN KEY (categoryId) REFERENCES income_categories (id),
   FOREIGN KEY (paymentMethodId) REFERENCES payment_methods (id),
   FOREIGN KEY (taskId) REFERENCES tasks (id) ON DELETE SET NULL
+)
+''');
+
+    await db.execute('''
+CREATE TABLE sticky_notes (
+  id $idType,
+  content $textType,
+  colorIndex INTEGER DEFAULT 0,
+  createdAt $textType,
+  updatedAt $textType
 )
 ''');
 
@@ -548,6 +559,22 @@ CREATE TABLE tasks (
         await _createIndexes(db);
       } catch (e) {
         log('Migration Error v22 indexes: $e');
+      }
+    }
+
+    if (oldVersion < 23) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sticky_notes (
+            id $idType,
+            content $textType,
+            colorIndex INTEGER DEFAULT 0,
+            createdAt $textType,
+            updatedAt $textType
+          )
+        ''');
+      } catch (e) {
+        log('Migration Error v23 sticky_notes: $e');
       }
     }
   }
@@ -1013,5 +1040,35 @@ CREATE TABLE tasks (
   Future<void> deleteIncomeByTaskId(String taskId) async {
     final db = await instance.database;
     await db.delete('incomes', where: 'taskId = ?', whereArgs: [taskId]);
+  }
+
+  // Sticky Notes CRUD
+  Future<int> insertStickyNote(StickyNote note) async {
+    final db = await instance.database;
+    return await db.insert('sticky_notes', note.toMap());
+  }
+
+  Future<List<StickyNote>> getStickyNotes() async {
+    final db = await instance.database;
+    final result = await db.query(
+      'sticky_notes',
+      orderBy: 'updatedAt DESC',
+    );
+    return result.map(StickyNote.fromMap).toList();
+  }
+
+  Future<int> updateStickyNote(StickyNote note) async {
+    final db = await instance.database;
+    return await db.update(
+      'sticky_notes',
+      note.toMap(),
+      where: 'id = ?',
+      whereArgs: [note.id],
+    );
+  }
+
+  Future<int> deleteStickyNote(String id) async {
+    final db = await instance.database;
+    return await db.delete('sticky_notes', where: 'id = ?', whereArgs: [id]);
   }
 }

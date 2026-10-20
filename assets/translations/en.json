@@ -354,4 +354,12 @@
     ,"ratesDailyReference": "Daily reference rates · not live market prices"
     ,"ratesDefaultFallback": "Could not refresh. Showing default rates. Tap refresh to retry."
     ,"ratesSavedFallback": "Could not refresh. Showing saved rates. Tap refresh to retry."
+    ,"stickyNotes": "Sticky notes"
+    ,"stickyAddNote": "Add note"
+    ,"stickyEmptyHint": "Pin anything you need — tasks, ideas, reminders."
+    ,"stickyNew": "New note"
+    ,"stickyEdit": "Edit note"
+    ,"stickyHint": "Start writing…"
+    ,"stickyDeleteConfirmTitle": "Delete note?"
+    ,"stickyDeleteConfirmBody": "This note will be removed from your dashboard."
 }

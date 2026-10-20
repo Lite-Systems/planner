@@ -23,6 +23,7 @@ import '../shell/app_shell.dart';
 import '../todos/todos_screen.dart';
 import 'widgets/dashboard_style.dart';
 import 'widgets/home_summary_cards.dart';
+import 'widgets/sticky_notes_section.dart';
 import 'widgets/usd_rate_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -142,6 +143,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           : AppSection.income,
                                     ),
                                   ),
+                                  const SizedBox(height: 26),
+                                  const StickyNotesSection(),
                                   const SizedBox(height: 26),
                                   if (wide)
                                     Row(

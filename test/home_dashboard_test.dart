@@ -14,11 +14,13 @@ import 'package:planner/models/income.dart';
 import 'package:planner/models/payment_method.dart';
 import 'package:planner/models/project.dart';
 import 'package:planner/models/project_task.dart';
+import 'package:planner/models/sticky_note.dart';
 import 'package:planner/providers/expenses_provider.dart';
 import 'package:planner/providers/income_provider.dart';
 import 'package:planner/providers/locale_provider.dart';
 import 'package:planner/providers/project_provider.dart';
 import 'package:planner/providers/settings_provider.dart';
+import 'package:planner/providers/sticky_notes_provider.dart';
 import 'package:planner/providers/wallet_provider.dart';
 import 'package:planner/screens/home/home_screen.dart';
 import 'package:planner/screens/home/widgets/usd_rate_widget.dart';
@@ -427,6 +429,9 @@ Future<SettingsProvider> _pumpDashboard(
           create: (_) => _Projects(empty),
         ),
         ChangeNotifierProvider<WalletProvider>(create: (_) => _Wallet(empty)),
+        ChangeNotifierProvider<StickyNotesProvider>(
+          create: (_) => _StickyNotes(empty),
+        ),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
       child: EasyLocalization(
@@ -553,6 +558,23 @@ class _Wallet extends WalletProvider {
     PaymentMethod method, {
     required SettingsProvider settings,
   }) => 10480.04;
+}
+
+class _StickyNotes extends StickyNotesProvider {
+  _StickyNotes(this.empty);
+  final bool empty;
+  @override
+  List<StickyNote> get notes => empty
+      ? []
+      : [
+          StickyNote(
+            id: 'n1',
+            content: 'Remember the client call tomorrow at 10am',
+            colorIndex: 0,
+            createdAt: DateTime(2026, 10, 20),
+            updatedAt: DateTime(2026, 10, 20),
+          ),
+        ];
 }
 
 class _Projects extends ProjectProvider {

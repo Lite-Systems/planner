@@ -12,6 +12,7 @@ import 'package:upgrader/upgrader.dart';
 import 'core/utils/app_layout.dart';
 import 'core/utils/app_thems.dart';
 import 'providers/settings_provider.dart';
+import 'providers/sticky_notes_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/project_provider.dart';
 import 'providers/locale_provider.dart';
@@ -49,6 +50,7 @@ void main() async {
           ChangeNotifierProvider(create: (_) => LocaleProvider()),
           ChangeNotifierProvider(create: (_) => ExpensesProvider()),
           ChangeNotifierProvider(create: (_) => IncomeProvider()),
+          ChangeNotifierProvider(create: (_) => StickyNotesProvider()),
           Provider(
             lazy: false,
             create: (context) => MacosWidgetService(
@@ -105,6 +107,7 @@ class _ProviderWiringState extends State<ProviderWiring> {
     final projects = Provider.of<ProjectProvider>(context, listen: false);
     final income = Provider.of<IncomeProvider>(context, listen: false);
     final expenses = Provider.of<ExpensesProvider>(context, listen: false);
+    final notes = Provider.of<StickyNotesProvider>(context, listen: false);
     final wallet = Provider.of<WalletProvider>(context, listen: false);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     // Paying a task creates the matching income record; unpaying removes it.
@@ -127,6 +130,7 @@ class _ProviderWiringState extends State<ProviderWiring> {
           projects.loadData(),
           expenses.loadData(),
           income.loadData(),
+          notes.loadData(),
         ]),
       );
     });

@@ -42,7 +42,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
   final Set<String> _selectedTaskIds = {};
   String _selectedType = 'all';
   String _selectedStatus = 'all';
-  String _selectedPaymentStatus = 'all';
   String _selectedMemberId = 'all';
   bool _filtersExpanded = false;
 
@@ -74,7 +73,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
     _searchController.clear();
     _selectedType = 'all';
     _selectedStatus = 'all';
-    _selectedPaymentStatus = 'all';
     _selectedMemberId = 'all';
     _filtersExpanded = false;
     Provider.of<ProjectProvider>(
@@ -243,7 +241,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       (_searchController.text.trim().isNotEmpty ? 1 : 0) +
       (_selectedType != 'all' ? 1 : 0) +
       (_selectedStatus != 'all' ? 1 : 0) +
-      (_selectedPaymentStatus != 'all' ? 1 : 0) +
       (_selectedMemberId != 'all' ? 1 : 0);
 
   void _clearFilters() {
@@ -251,7 +248,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       _searchController.clear();
       _selectedType = 'all';
       _selectedStatus = 'all';
-      _selectedPaymentStatus = 'all';
       _selectedMemberId = 'all';
     });
   }
@@ -365,17 +361,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                   value: value.tr(),
               },
               onSelected: (value) => setState(() => _selectedStatus = value),
-            ),
-            _filterGroup(
-              title: 'taskPayment'.tr(),
-              group: 'payment',
-              selected: _selectedPaymentStatus,
-              options: {
-                for (final value in ['all', 'paid', 'unpaid'])
-                  value: value.tr(),
-              },
-              onSelected: (value) =>
-                  setState(() => _selectedPaymentStatus = value),
             ),
             if (members.isNotEmpty)
               _filterGroup(
@@ -687,14 +672,6 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
                           if (_selectedType != 'all') {
                             tasks = tasks
                                 .where((t) => t.type == _selectedType)
-                                .toList();
-                          }
-
-                          if (_selectedPaymentStatus != 'all') {
-                            final isPaidFilter =
-                                _selectedPaymentStatus == 'paid';
-                            tasks = tasks
-                                .where((t) => t.isPaid == isPaidFilter)
                                 .toList();
                           }
 

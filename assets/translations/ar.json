@@ -353,4 +353,12 @@
     ,"ratesDailyReference": "أسعار مرجعية يومية · ليست أسعار السوق اللحظية"
     ,"ratesDefaultFallback": "تعذّر التحديث. تُعرض الأسعار الافتراضية. اضغط تحديث للمحاولة مجددًا."
     ,"ratesSavedFallback": "تعذّر التحديث. تُعرض الأسعار المحفوظة. اضغط تحديث للمحاولة مجددًا."
+    ,"stickyNotes": "ملاحظات لاصقة"
+    ,"stickyAddNote": "أضف ملاحظة"
+    ,"stickyEmptyHint": "ثبّت ما تحتاجه — مهام، أفكار، تذكيرات."
+    ,"stickyNew": "ملاحظة جديدة"
+    ,"stickyEdit": "تعديل الملاحظة"
+    ,"stickyHint": "ابدأ الكتابة…"
+    ,"stickyDeleteConfirmTitle": "حذف الملاحظة؟"
+    ,"stickyDeleteConfirmBody": "سيتم إزالة هذه الملاحظة من لوحة التحكم."
 }
