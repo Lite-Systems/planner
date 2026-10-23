@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:planner/core/utils/app_colors.dart';
 import 'package:planner/core/utils/app_tokens.dart';
 import 'package:planner/core/widgets/app_list_section.dart';
@@ -43,6 +45,21 @@ class SettingsScreen extends StatelessWidget {
 class _SettingsList extends StatelessWidget {
   const _SettingsList();
 
+  Future<File?> _prepareBackup(BuildContext context) async {
+    final account = context.read<AccountProvider?>();
+    if (account == null) return DatabaseBackupService.createBackupFile();
+    return account.exportDatabase(
+      allowLocalSnapshot: () async {
+        if (!context.mounted) return false;
+        return AccountScreen.confirm(
+          context,
+          'backupLocalTitle',
+          'backupLocalMessage',
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final showDesktop =
@@ -68,7 +85,9 @@ class _SettingsList extends StatelessWidget {
                     title: Text('accountSync'.tr()),
                     subtitle: Text(
                       context.watch<AccountProvider>().user?.email ??
-                          'accountGuestInfo'.tr(),
+                          (context.watch<AccountProvider>().workingLocally
+                              ? 'accountWorkingLocally'.tr()
+                              : 'accountGuestInfo'.tr()),
                     ),
                     trailing: const CupertinoListTileChevron(),
                     onTap: () => Navigator.of(context).push(
@@ -706,7 +725,11 @@ class _SettingsList extends StatelessWidget {
                   trailing: const CupertinoListTileChevron(),
                   onTap: () async {
                     try {
-                      await DatabaseBackupService.createAndShareBackup();
+                      final backup = await _prepareBackup(context);
+                      if (backup == null) return;
+                      await DatabaseBackupService.createAndShareBackup(
+                        backup: backup,
+                      );
                       if (context.mounted) {
                         showCupertinoDialog(
                           useRootNavigator: false,
@@ -784,8 +807,12 @@ class _SettingsList extends StatelessWidget {
                   trailing: const CupertinoListTileChevron(),
                   onTap: () async {
                     try {
+                      final backup = await _prepareBackup(context);
+                      if (backup == null) return;
                       final saved =
-                          await DatabaseBackupService.saveBackupToStorage();
+                          await DatabaseBackupService.saveBackupToStorage(
+                            backup: backup,
+                          );
                       if (saved && context.mounted) {
                         showCupertinoDialog(
                           useRootNavigator: false,
@@ -863,9 +890,21 @@ class _SettingsList extends StatelessWidget {
                   trailing: const CupertinoListTileChevron(),
                   onTap: () async {
                     try {
-                      bool restored =
-                          await DatabaseBackupService.pickAndRestoreBackup();
-                      if (restored && context.mounted) {
+                      final account = context.read<AccountProvider?>();
+                      final workspaceId = account?.workspaceId;
+                      final path = await DatabaseBackupService.pickBackupPath();
+                      if (path == null || !context.mounted) return;
+                      if (account?.workspaceId != workspaceId) {
+                        throw StateError(
+                          'The active planner changed while choosing a backup. Please select the file again.',
+                        );
+                      }
+                      if (account == null) {
+                        await DatabaseBackupService.restoreBackup(path);
+                      } else {
+                        await account.importDatabase(path);
+                      }
+                      if (context.mounted) {
                         showCupertinoDialog(
                           useRootNavigator: false,
                           context: context,
@@ -891,7 +930,15 @@ class _SettingsList extends StatelessWidget {
                                 child: Text('ok'.tr()),
                                 onPressed: () {
                                   Navigator.pop(context);
-                                  RestartWidget.restartApp(context);
+                                  if (account == null) {
+                                    RestartWidget.restartApp(context);
+                                  } else if (account.conflicts.isNotEmpty) {
+                                    Navigator.of(context).push(
+                                      NoAnimationPageRoute(
+                                        builder: (_) => const AccountScreen(),
+                                      ),
+                                    );
+                                  }
                                 },
                               ),
                             ],

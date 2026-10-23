@@ -1,16 +1,22 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:planner/core/services/database_backup_service.dart';
 import 'package:planner/core/services/database_helper.dart';
 import 'package:planner/core/sync/cloud_sync_service.dart';
 import 'package:planner/core/sync/firebase_auth_service.dart';
 import 'package:planner/core/sync/firebase_config.dart';
 import 'package:planner/core/sync/local_file_policy.dart';
+import 'package:planner/core/sync/local_workspace.dart';
 import 'package:planner/core/sync/sync_store.dart';
 import 'package:planner/core/sync/sync_transport.dart';
 import 'package:planner/models/project.dart';
+import 'package:planner/providers/account_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -26,10 +32,17 @@ void main() {
   setUp(() async {
     HttpOverrides.global = null;
     FlutterSecureStorage.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({});
+    await initializeDateFormatting('en');
     auth = FirebaseAuthService();
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfiNoIsolate;
     root = await Directory.systemTemp.createTemp('planner_firebase_');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          (_) async => root.path,
+        );
     await helper.close();
     await databaseFactory.setDatabasesPath(root.path);
     await helper.switchAccount(null);
@@ -39,6 +52,11 @@ void main() {
     await helper.close();
     auth.dispose();
     await root.delete(recursive: true);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('plugins.flutter.io/path_provider'),
+          null,
+        );
   });
   String email() =>
       'planner-${DateTime.now().microsecondsSinceEpoch}@example.com';
@@ -49,6 +67,97 @@ void main() {
         store: SyncStore(db),
         onRemoteChanges: () async {},
       );
+
+  test(
+    'backup import reaches another device; logout edits reconnect and deletion remains separate',
+    () async {
+      await helper.insertProject(
+        Project(id: 'imported', name: 'Backup project', description: ''),
+      );
+      final backup = await DatabaseBackupService.createBackupFile(
+        directory: root,
+      );
+      await helper.switchAccount('second_device');
+      final secondPath = await helper.activePath;
+      final address = email();
+      await auth.authenticate(address, 'Password123!', register: true);
+      await LocalWorkspace.restore(auth.user!.id);
+      final account = AccountProvider(auth: auth);
+      final secondAuth = FirebaseAuthService();
+      await secondAuth.authenticate(address, 'Password123!', register: false);
+      final secondDb = await openDatabase(secondPath, singleInstance: false);
+      final secondSync = service(secondDb, secondAuth);
+      try {
+        await account.start(() async {});
+        await account.importDatabase(backup.path);
+        await account.sync!.syncNow();
+        expect(account.sync!.errorKey, isNull);
+        await secondSync.syncNow();
+        expect(secondSync.errorKey, isNull);
+        expect(
+          (await secondDb.query('projects')).single['name'],
+          'Backup project',
+        );
+        final owner = auth.user!.id;
+        await account.signOut();
+        expect(account.workspaceId, owner);
+        expect(account.sync, isNull);
+        await helper.updateProject(
+          Project(
+            id: 'imported',
+            name: 'Edited while signed out',
+            description: '',
+          ),
+        );
+        await helper.close();
+        await LocalWorkspace.restore(null);
+        expect(helper.accountId, owner);
+        await account.authenticate(address, 'Password123!', register: false);
+        await account.sync!.syncNow();
+        expect(account.sync!.errorKey, isNull);
+        await secondSync.syncNow();
+        expect(
+          (await secondDb.query('projects')).single['name'],
+          'Edited while signed out',
+        );
+        await account.importDatabase(backup.path);
+        await account.sync!.syncNow();
+        expect(account.conflicts, hasLength(1));
+        expect(
+          (await helper.getProjects()).single.name,
+          'Edited while signed out',
+        );
+        await secondSync.syncNow();
+        expect(
+          (await secondDb.query('projects')).single['name'],
+          'Edited while signed out',
+        );
+        await account.resolveConflict('project:imported', keepLocal: false);
+        expect(account.conflicts, isEmpty);
+        expect(account.sync!.errorKey, isNull);
+        await secondSync.syncNow();
+        expect(
+          (await secondDb.query('projects')).single['name'],
+          'Backup project',
+        );
+        await account.deleteAccount('Password123!');
+        expect(account.errorKey, isNull);
+        expect(account.user, isNull);
+        expect(account.workspaceId, isNull);
+        await LocalWorkspace.restore(null);
+        expect(helper.accountId, isNull);
+        expect((await helper.getProjects()).single.name, 'Backup project');
+      } finally {
+        await account.sync?.pause();
+        account.dispose();
+        await secondSync.pause();
+        secondSync.dispose();
+        await secondDb.close();
+        secondAuth.dispose();
+      }
+    },
+    skip: skip,
+  );
 
   test(
     'Firebase registration, session restore, sign-in, password reset, and refresh work',

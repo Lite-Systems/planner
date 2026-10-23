@@ -1,5 +1,8 @@
 import 'dart:io';
+
 import '../sync/account_data_service.dart';
+import '../sync/sync_store.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:planner/core/services/database_helper.dart';
 import 'package:path/path.dart';
@@ -9,8 +12,6 @@ import 'package:sqflite/sqflite.dart';
 import 'package:intl/intl.dart';
 
 class DatabaseBackupService {
-  static String get _dbName => DatabaseHelper.dbFileName;
-
   static String backupFileName(DateTime now) {
     final timestamp = DateFormat('yyyyMMdd_HHmmss', 'en').format(now);
     return 'smart_planner_backup_$timestamp.db';
@@ -36,20 +37,83 @@ class DatabaseBackupService {
     return backup;
   }
 
-  static Future<File> createBackupFile() async {
+  static Future<File> createBackupFile({
+    bool localSnapshot = false,
+    Directory? directory,
+  }) async {
     final db = await DatabaseHelper.instance.database;
-    await db.rawQuery('PRAGMA wal_checkpoint(FULL)');
-
-    final source = File(
-      db.path.isNotEmpty ? db.path : join(await getDatabasesPath(), _dbName),
+    return exportSnapshot(
+      db,
+      directory ?? await getTemporaryDirectory(),
+      localSnapshot: localSnapshot,
     );
-    final tempDir = await getTemporaryDirectory();
-    return copyDatabaseTo(source, tempDir, DateTime.now());
+  }
+
+  /// Reads all model rows in one transaction. Tokens, queues, conflict decisions,
+  /// cloud versions, triggers, and ownership never enter a portable backup.
+  static Future<File> exportSnapshot(
+    Database db,
+    Directory directory, {
+    bool localSnapshot = false,
+  }) async {
+    final schemas = <String, String>{};
+    final rows = <String, List<Map<String, Object?>>>{};
+    final indexes = <String>[];
+    var version = 24;
+    await db.transaction((tx) async {
+      version =
+          Sqflite.firstIntValue(await tx.rawQuery('PRAGMA user_version')) ?? 24;
+      for (final table in SyncStore.tables) {
+        final definition = await tx.query(
+          'sqlite_master',
+          columns: ['sql'],
+          where: "type='table' AND name=?",
+          whereArgs: [table],
+        );
+        if (definition.isEmpty) continue;
+        schemas[table] = definition.first['sql']! as String;
+        rows[table] = await tx.query(table);
+        indexes.addAll(
+          (await tx.query(
+            'sqlite_master',
+            columns: ['sql'],
+            where: "type='index' AND tbl_name=? AND sql IS NOT NULL",
+            whereArgs: [table],
+          )).map((r) => r['sql']! as String),
+        );
+      }
+    });
+    await directory.create(recursive: true);
+    final folder = await directory.createTemp('planner_backup_');
+    final name = backupFileName(
+      DateTime.now(),
+    ).replaceFirst('backup_', localSnapshot ? 'local_backup_' : 'backup_');
+    final file = File(join(folder.path, name));
+    final backup = await openDatabase(file.path, singleInstance: false);
+    try {
+      await backup.transaction((tx) async {
+        for (final schema in schemas.values) {
+          await tx.execute(schema);
+        }
+        for (final entry in rows.entries) {
+          for (final row in entry.value) {
+            await tx.insert(entry.key, row);
+          }
+        }
+        for (final sql in indexes) {
+          await tx.execute(sql);
+        }
+        await tx.execute('PRAGMA user_version = $version');
+      });
+    } finally {
+      await backup.close();
+    }
+    return file;
   }
 
   /// Creates a backup of the current database and shares it.
-  static Future<void> createAndShareBackup() async {
-    final backup = await createBackupFile();
+  static Future<void> createAndShareBackup({File? backup}) async {
+    backup ??= await createBackupFile();
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(backup.path, mimeType: 'application/x-sqlite3')],
@@ -59,8 +123,8 @@ class DatabaseBackupService {
   }
 
   /// Saves a backup via the system picker (Drive, Files, USB, Downloads).
-  static Future<bool> saveBackupToStorage() async {
-    final backup = await createBackupFile();
+  static Future<bool> saveBackupToStorage({File? backup}) async {
+    backup ??= await createBackupFile();
     final uri = await FilePicker.saveFile(
       dialogTitle: 'Save database backup',
       fileName: basename(backup.path),
@@ -71,11 +135,16 @@ class DatabaseBackupService {
   }
 
   static Future<bool> pickAndRestoreBackup() async {
-    final file = await FilePicker.pickFile(dialogTitle: 'Import database');
-    if (file == null) return false;
-    final sourcePath = await materializePickedFile(file);
+    final sourcePath = await pickBackupPath();
+    if (sourcePath == null) return false;
     await restoreBackup(sourcePath);
     return true;
+  }
+
+  static Future<String?> pickBackupPath() async {
+    final file = await FilePicker.pickFile(dialogTitle: 'Import database');
+    if (file == null) return null;
+    return materializePickedFile(file);
   }
 
   /// Copies a picker result to a real file SQLite can open.
@@ -92,25 +161,22 @@ class DatabaseBackupService {
     return dest.path;
   }
 
-  static Future<void> restoreBackup(String sourcePath) async {
+  static Future<void> restoreBackup(
+    String sourcePath, {
+    Directory? backupDirectory,
+  }) async {
     await validateBackupFile(sourcePath);
-
-    if (DatabaseHelper.instance.accountId != null) {
-      // Keep cloud versions/tombstones. Importing a backup is a merge; it must
-      // never rewind a download cursor or transplant ownership metadata.
-      await createBackupFile();
-      await AccountDataService.mergeDatabase(sourcePath);
-      return;
-    }
-    final targetPath = await DatabaseHelper.instance.activePath;
-    final sourceFile = File(sourcePath);
-    if (!await sourceFile.exists()) {
-      throw Exception('Source backup file not found');
-    }
-
-    await DatabaseHelper.instance.close();
-    await replaceDatabaseFile(sourcePath, targetPath);
-    await DatabaseHelper.instance.database;
+    // Durable safety copies survive app restarts and temporary-file cleanup.
+    final directory =
+        backupDirectory ??
+        Directory(
+          join(
+            (await getApplicationSupportDirectory()).path,
+            'before_database_import',
+          ),
+        );
+    await createBackupFile(directory: directory);
+    await AccountDataService.mergeDatabase(sourcePath);
   }
 
   /// Overwrites [targetPath] and deletes leftover SQLite WAL/SHM files.
@@ -131,13 +197,41 @@ class DatabaseBackupService {
   static Future<void> validateBackupFile(String sourcePath) async {
     Database? testDb;
     try {
-      testDb = await openDatabase(sourcePath, readOnly: true);
+      if (!await File(sourcePath).exists()) {
+        throw const FormatException('Missing backup');
+      }
+      testDb = await openDatabase(
+        sourcePath,
+        readOnly: true,
+        singleInstance: false,
+      );
+      final integrity = await testDb.rawQuery('PRAGMA quick_check');
+      if (integrity.length != 1 || integrity.first.values.single != 'ok') {
+        throw const FormatException('Damaged backup');
+      }
+      if (await testDb.getVersion() > 24) {
+        throw Exception(
+          'This Smart Planner backup requires a newer app version',
+        );
+      }
       final tables = await testDb.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table'",
       );
       final names = tables.map((row) => row['name']).toSet();
       if (!names.contains('projects') || !names.contains('tasks')) {
         throw Exception('Selected file is not a Smart Planner database');
+      }
+      for (final table in ['projects', 'tasks']) {
+        final columns = (await testDb.rawQuery(
+          'PRAGMA table_info($table)',
+        )).map((r) => r['name']).toSet();
+        if (!columns.containsAll([
+          'id',
+          'name',
+          if (table == 'tasks') 'projectId',
+        ])) {
+          throw Exception('Selected file is not a Smart Planner database');
+        }
       }
     } catch (e) {
       if (e.toString().contains('Smart Planner')) rethrow;

@@ -14,7 +14,7 @@ import 'core/utils/app_thems.dart';
 import 'providers/settings_provider.dart';
 import 'providers/account_provider.dart';
 import 'core/sync/firebase_auth_service.dart';
-import 'core/services/database_helper.dart';
+import 'core/sync/local_workspace.dart';
 import 'screens/account/account_guard.dart';
 import 'providers/sticky_notes_provider.dart';
 import 'providers/wallet_provider.dart';
@@ -45,9 +45,7 @@ void main() async {
   }
 
   await FirebaseAuthService.instance.initialize();
-  await DatabaseHelper.instance.switchAccount(
-    FirebaseAuthService.instance.user?.id,
-  );
+  await LocalWorkspace.restore(FirebaseAuthService.instance.user?.id);
 
   runApp(
     RestartWidget(
@@ -198,7 +196,7 @@ class PlannerApp extends StatelessWidget {
       (s) => s.isDarkMode,
     );
     final accountId = context.select<AccountProvider, String?>(
-      (a) => a.user?.id,
+      (a) => a.workspaceId,
     );
     final app = CupertinoApp(
       key: ValueKey(accountId ?? 'guest'),

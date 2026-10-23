@@ -90,9 +90,33 @@ class AccountDataService {
         if (names.contains(table)) snapshots[table] = await source.query(table);
       }
       await target.transaction((tx) async {
+        if ((await tx.query('sync_conflicts', limit: 1)).isNotEmpty) {
+          throw StateError(
+            'Resolve existing conflicts before importing another backup',
+          );
+        }
+        final proposed = <Map<String, dynamic>>[];
+        final reviewGroups = <String>{};
+        final parentIds = <String, Set<Object?>>{};
+        for (final parent in ['projects', 'tasks', 'project_members']) {
+          parentIds[parent] = {
+            ...(await tx.query(parent, columns: ['id'])).map((r) => r['id']),
+            ...?snapshots[parent]?.map((r) => r['id']),
+          };
+        }
         for (final entry in snapshots.entries) {
           final entity = entry.key;
-          for (final data in entry.value) {
+          final schema = await tx.rawQuery('PRAGMA table_info($entity)');
+          final columns = schema.map((r) => r['name']).toSet();
+          for (final original in entry.value) {
+            // Legacy backups can omit newer columns; the current schema supplies
+            // defaults for new rows and preserves newer fields on existing rows.
+            final data = Map<String, Object?>.fromEntries(
+              original.entries.where((e) => columns.contains(e.key)),
+            );
+            if (entity == 'tasks' && data['status'] == 'todo') {
+              data['status'] = 'toDo';
+            }
             final id = entity == 'task_assignees'
                 ? '${data['taskId']}:${data['memberId']}'
                 : data['id']! as String;
@@ -107,8 +131,21 @@ class AccountDataService {
               where: where,
               whereArgs: args,
             );
+            final merged = <String, dynamic>{
+              if (existing.isNotEmpty) ...existing.first,
+              ...data,
+            };
+            for (final column in schema) {
+              if (column['notnull'] == 1 &&
+                  column['dflt_value'] == null &&
+                  merged[column['name']] == null) {
+                throw const FormatException(
+                  'Backup is missing required record fields',
+                );
+              }
+            }
             if (existing.isNotEmpty &&
-                SyncStore.jsonEqual(existing.first, data)) {
+                SyncStore.jsonEqual(existing.first, merged)) {
               continue;
             }
             final state = await tx.query(
@@ -116,32 +153,67 @@ class AccountDataService {
               where: 'entity=? AND record_id=?',
               whereArgs: [entity, id],
             );
+            final pending = await tx.query(
+              'sync_outbox',
+              where: 'entity=? AND record_id=?',
+              whereArgs: [entity, id],
+            );
+            final parents = switch (entity) {
+              'tasks' || 'project_members' => {'projects': merged['projectId']},
+              'task_assignees' => {
+                'tasks': merged['taskId'],
+                'project_members': merged['memberId'],
+              },
+              _ => <String, Object?>{},
+            };
+            for (final parent in parents.entries) {
+              if (!parentIds[parent.key]!.contains(parent.value)) {
+                throw const FormatException(
+                  'Backup contains records with missing parents',
+                );
+              }
+            }
+            var group = await SyncStore.groupKey(tx, entity, merged);
+            if (['task_assignees', 'incomes', 'expenses'].contains(entity)) {
+              final parent = snapshots['tasks']
+                  ?.where((r) => r['id'] == merged['taskId'])
+                  .firstOrNull;
+              if (parent != null) group = 'project:${parent['projectId']}';
+            }
+            if (existing.isNotEmpty ||
+                (state.isNotEmpty && state.first['deleted'] == 1) ||
+                (pending.isNotEmpty && pending.first['deleted'] == 1)) {
+              reviewGroups.add(group);
+            }
+            proposed.add({
+              'source': 'backup',
+              'entity': entity,
+              'record_id': id,
+              'group_key': group,
+              'version': state.isEmpty ? 0 : state.first['version'],
+              'deleted': false,
+              'payload': merged,
+            });
+          }
+        }
+        for (final proposal in proposed) {
+          final group = proposal['group_key'];
+          if (reviewGroups.contains(group)) {
+            // Stage the entire changed group, including new child records,
+            // so rejecting a deleted parent cannot leave orphan children.
+            await tx.insert('sync_conflicts', {
+              'entity': proposal['entity'],
+              'record_id': proposal['record_id'],
+              'group_key': group,
+              'remote': jsonEncode(proposal),
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
+          } else {
             await SyncStore.putRow(
               tx,
-              entity,
-              Map<String, dynamic>.from(data),
+              proposal['entity'] as String,
+              Map<String, dynamic>.from(proposal['payload'] as Map),
               deleted: false,
             );
-            if (existing.isNotEmpty && state.isNotEmpty) {
-              final pending = (await tx.query(
-                'sync_outbox',
-                where: 'entity=? AND record_id=?',
-                whereArgs: [entity, id],
-              )).first;
-              await tx.insert('sync_conflicts', {
-                'entity': entity,
-                'record_id': id,
-                'group_key': pending['group_key'],
-                'remote': jsonEncode({
-                  'entity': entity,
-                  'record_id': id,
-                  'group_key': pending['group_key'],
-                  'version': state.first['version'],
-                  'deleted': state.first['deleted'] == 1,
-                  'payload': jsonDecode(state.first['payload']! as String),
-                }),
-              }, conflictAlgorithm: ConflictAlgorithm.replace);
-            }
           }
         }
       });

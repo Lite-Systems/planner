@@ -46,8 +46,44 @@ support that target; use a current CLI for authentication-provider deployment.
 
 Settings → Account & Sync offers **Create account**, **Sign in**, **Forgot
 password**, **Sync now**, conflict review, sign-out, and account deletion. Guest
-use remains available. Signing out keeps unsynced account data privately for the
-same account and returns to the separate guest database.
+use remains available. **Log out of Firebase** clears authentication credentials
+and stops cloud requests without changing the current database. Projects, tasks,
+finances, notes, and settings remain usable on the device, including after an app
+restart. The app labels this state **Signed out — working locally**. Local edits
+and deletions remain in the same account's durable journal; signing back into that
+account resumes synchronization and conflict review. Signing into a different
+account opens its separate database and never uploads the previous workspace.
+The remembered workspace ID contains no credentials. Existing guest data remains
+separate and can still be merged through the device-data import flow.
+
+## Portable database backups
+
+Settings → Database Backup exports/imports the active planner as a standalone
+SQLite `.db` file. A transaction reads the records and account preferences from
+one consistent local snapshot. Exports exclude sessions, ownership, upload queues,
+cloud cursors, tombstones, triggers, and pending conflict decisions. File paths
+remain local references; the database backup does not package attachment files.
+
+While signed in, export refreshes Firebase first. If sync fails, leaves pending
+changes, or needs conflict review, the app offers a clearly labeled local snapshot
+instead; its filename contains `local_backup`. Signed-out exports also use that
+label. Exporting does not require Firebase's paid managed export service.
+
+Import validates SQLite integrity and the planner schema, then saves a durable
+safety backup under the application-support `before_database_import` directory.
+It merges business records into the current database without importing another
+account's synchronization metadata. Older backups can omit newer optional fields;
+the active schema supplies defaults. Missing required fields or parent records
+reject the merge atomically. Identical records are skipped.
+
+Different versions and deleted records are staged for review while the current
+data remains unchanged. Related changed records are reviewed as one group, so
+rejecting a deleted project cannot create orphan tasks. Choose the current device
+or imported backup version from Account & Sync, including while signed out.
+Another import is blocked until existing conflicts are resolved. Cloud exchange
+waits while backup choices remain unresolved, then resumes normally. Imports and
+exports pause the sync coordinator during database access; account switching is
+blocked during the operation. No app restart is required after a successful import.
 
 ## Free-tier behavior
 
@@ -70,8 +106,9 @@ same account and returns to the separate guest database.
 - Sync runs after edits, app resume, manual refresh, and a 30-second retry while
   the app is open. An unchanged cloud head costs a small read instead of
   downloading the whole account. Suspended/closed apps sync when reopened.
-- Guest import makes a local backup before merging. Backup restore imports model
-  rows into the current account without copying ownership or sync metadata.
+- Guest import makes a local backup before merging. Backup imports preserve cloud
+  versions and deletion markers, and create new local mutations only after an
+  imported version is accepted. Signed-out imports wait for the same account to reconnect.
 - Account deletion asks for the password again, blocks writes, deletes cloud
   planner records, and deletes Firebase Auth. It keeps only a minimal deletion
   marker to block unexpired tokens on other devices. Retry interrupted deletion.
@@ -95,9 +132,10 @@ firebase emulators:exec --only auth,firestore --project demo-smart-planner 'flut
 The integration test uses real Auth and Firestore emulators, including the actual
 Firestore rules. It covers registration, restored sessions, password reset, token
 refresh, cross-device sync, conflicts, private access, and account deletion. It
-skips unless both emulator hosts are explicitly supplied. Do not set emulator
-hosts in production builds. Live email delivery and actual device builds still
-need verification after the owner enables the Firebase project.
+skips unless both emulator hosts are explicitly supplied. It also covers portable
+backup import reaching a second device, logout with local edits and restart,
+reconnection, and the separate destructive deletion path. Do not set emulator
+hosts in production builds. Password-reset email delivery requires a live check.
 
 To run a deliberate live smoke check after Authentication is enabled:
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+
 import 'firebase_auth_service.dart';
 
 import 'local_file_policy.dart';
@@ -61,6 +62,9 @@ class CloudSyncService extends ChangeNotifier {
     errorKey = null;
     _notify();
     try {
+      // Finish reviewing a backup before exchanging any of its related rows.
+      // This also lets offline import decisions retain their cloud base versions.
+      if (await store.hasImportConflicts()) return;
       // Pull first: a newly installed device must not overwrite cloud records
       // with its automatically seeded defaults.
       await _pull();

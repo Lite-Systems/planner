@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../core/services/database_helper.dart';
+import '../core/services/database_backup_service.dart';
 import '../core/sync/account_data_service.dart';
 import '../core/sync/firebase_auth_service.dart';
 import '../core/sync/firebase_config.dart';
@@ -11,22 +14,31 @@ import '../core/sync/local_file_policy.dart';
 import '../core/sync/cloud_sync_service.dart';
 import '../core/sync/sync_store.dart';
 import '../core/sync/sync_transport.dart';
+import '../core/sync/local_workspace.dart';
 
 class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
   AccountProvider({FirebaseAuthService? auth})
     : _client = auth ?? FirebaseAuthService.instance {
     _user = _client.user;
-    switching = DatabaseHelper.instance.accountId != _user?.id;
+    switching = _user != null && workspaceId != _user?.id;
     WidgetsBinding.instance.addObserver(this);
     _client.addListener(_onAuthChanged);
   }
   final FirebaseAuthService _client;
   AccountUser? _user;
   AccountUser? get user => _user;
+  String? get workspaceId => DatabaseHelper.instance.accountId;
+  bool get workingLocally => _user == null && workspaceId != null;
+  List<Map<String, Object?>> _localConflicts = [];
+  List<Map<String, Object?>> get conflicts =>
+      sync?.conflicts ?? _localConflicts;
   bool get configured =>
       FirebaseConfig.configured && _client.initializationError == null;
-  void _onAuthChanged() =>
-      unawaited(Future<void>(() => _transition(_client.user)));
+  void _onAuthChanged() {
+    // Provider actions await their transition explicitly, avoiding duplicate
+    // transitions and preserving deletion's distinct workspace behavior.
+    if (!working) unawaited(_transition(_client.user));
+  }
 
   bool switching = false;
   bool working = false;
@@ -43,9 +55,11 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (_started) return;
     _started = true;
     reloadData = reload;
-    if (DatabaseHelper.instance.accountId != _client.user?.id) {
+    if (_client.user != null && workspaceId != _client.user?.id) {
       await _transition(_client.user);
     } else {
+      await LocalWorkspace.select(workspaceId);
+      await _refreshLocalConflicts();
       await _startSync();
     }
     _retry = Timer.periodic(
@@ -55,7 +69,12 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _startSync() async {
-    if (_user == null || _disposed) return;
+    if (_user == null ||
+        _disposed ||
+        workspaceId != _user!.id ||
+        _client.user?.id != _user!.id) {
+      return;
+    }
     final db = await DatabaseHelper.instance.database;
     sync = CloudSyncService(
       transport: SyncTransport(_client),
@@ -63,6 +82,7 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
       store: SyncStore(db),
       onRemoteChanges: () async => reloadData?.call(),
     )..addListener(_notify);
+    await sync!.refreshStatus();
     final decided =
         (await db.query('sync_control')).first['import_decided'] == 1;
     importAvailable = !decided && await AccountDataService.hasGuestData();
@@ -78,23 +98,30 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
     sync = null;
   }
 
-  Future<void> _transition(AccountUser? next) async {
+  Future<void> _transition(
+    AccountUser? next, {
+    bool clearWorkspace = false,
+  }) async {
     final previous = _transitioning;
     final completer = Completer<void>();
     _transitioning = completer.future;
     await previous;
     try {
       if (_disposed ||
-          (next?.id == _user?.id &&
-              DatabaseHelper.instance.accountId == next?.id)) {
+          (!clearWorkspace &&
+              next?.id == _user?.id &&
+              (next == null || workspaceId == next.id))) {
         return;
       }
       switching = true;
       _notify();
       await _stopSync();
-      await DatabaseHelper.instance.switchAccount(next?.id);
+      await LocalWorkspace.select(
+        clearWorkspace ? null : next?.id ?? workspaceId,
+      );
       _user = next;
       importAvailable = false;
+      await _refreshLocalConflicts();
       await reloadData?.call();
       await _startSync();
       errorKey = null;
@@ -155,10 +182,13 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
     _notify();
     try {
       // Local sign-out remains available while offline.
+      await _stopSync();
+      await LocalWorkspace.select(workspaceId);
       await _client.signOut();
       await _transition(null);
     } catch (_) {
       errorKey = 'accountSignOutFailed';
+      if (sync == null && _client.user != null) await _startSync();
     } finally {
       working = false;
       _notify();
@@ -205,6 +235,7 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
     if (working || _user == null) return;
     working = true;
     switching = true;
+    errorKey = null;
     _notify();
     try {
       await _stopSync();
@@ -243,7 +274,7 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
       await SyncTransport(_client).deleteCloudData();
       final oldPath = await DatabaseHelper.instance.activePath;
       await _client.deleteUser();
-      await _transition(null);
+      await _transition(null, clearWorkspace: true);
       await deleteDatabase(oldPath);
       errorKey = null;
     } catch (error) {
@@ -258,6 +289,124 @@ class AccountProvider extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void localChanged() => sync?.schedule();
+
+  Future<void> _refreshLocalConflicts() async {
+    _localConflicts = await SyncStore(
+      await DatabaseHelper.instance.database,
+    ).conflicts();
+  }
+
+  /// Only the file creation/merge is locked, not the system share/save picker.
+  Future<T> _databaseOperation<T>(Future<T> Function() operation) async {
+    if (working || switching) {
+      throw StateError('Database operation already running');
+    }
+    working = true;
+    switching = true;
+    errorKey = null;
+    _notify();
+    try {
+      await _stopSync();
+      return await operation();
+    } finally {
+      try {
+        await _refreshLocalConflicts();
+        await _startSync();
+      } finally {
+        switching = false;
+        working = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<File?> exportDatabase({
+    required Future<bool> Function() allowLocalSnapshot,
+  }) async {
+    if (working || switching) {
+      throw StateError('Database operation already running');
+    }
+    // Keep account switching disabled while refreshing or asking about a local copy.
+    working = true;
+    _notify();
+    var localSnapshot = _user == null;
+    try {
+      await sync?.syncNow();
+      if (sync != null &&
+          (sync!.errorKey != null ||
+              sync!.conflicts.isNotEmpty ||
+              sync!.pendingCount > 0)) {
+        if (!await allowLocalSnapshot()) return null;
+        localSnapshot = true;
+      }
+      switching = true;
+      _notify();
+      await _stopSync();
+      return await DatabaseBackupService.createBackupFile(
+        localSnapshot: localSnapshot,
+      );
+    } finally {
+      try {
+        if (sync == null) await _startSync();
+      } finally {
+        switching = false;
+        working = false;
+        _notify();
+      }
+    }
+  }
+
+  Future<void> importDatabase(String sourcePath) =>
+      _databaseOperation(() async {
+        await DatabaseBackupService.restoreBackup(sourcePath);
+        await reloadData?.call();
+      });
+
+  Future<void> resolveConflict(String group, {required bool keepLocal}) async {
+    if (working || switching || sync?.busy == true) return;
+    errorKey = null;
+    if (sync != null) {
+      await sync!.resolve(group, keepLocal: keepLocal);
+      return;
+    }
+    try {
+      await _databaseOperation(() async {
+        final db = await DatabaseHelper.instance.database;
+        await SyncStore(db).resolve(
+          group,
+          keepLocal: keepLocal,
+          localize: LocalFilePolicy(db).localize,
+        );
+        await reloadData?.call();
+      });
+    } catch (_) {
+      errorKey = 'syncRetryError';
+      _notify();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> conflictDetails(String group) async {
+    final store = SyncStore(await DatabaseHelper.instance.database);
+    final saved = (await store.conflicts())
+        .where((r) => r['group_key'] == group)
+        .toList();
+    final imported = saved.any(
+      (r) => (jsonDecode(r['remote']! as String) as Map)['source'] == 'backup',
+    );
+    if (sync != null && !imported) {
+      await sync!.syncNow();
+      final remotes = await sync!.transport.group(group, await store.pending());
+      await store.saveConflicts(remotes, group);
+      return remotes;
+    }
+    return saved
+        .map(
+          (r) => Map<String, dynamic>.from(
+            jsonDecode(r['remote']! as String) as Map,
+          ),
+        )
+        .toList();
+  }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {

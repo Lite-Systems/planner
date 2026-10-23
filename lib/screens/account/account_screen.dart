@@ -48,9 +48,9 @@ class AccountScreen extends StatelessWidget {
     final sync = account.sync;
     final disabled =
         account.working || account.switching || (sync?.busy ?? false);
-    final groups =
-        sync?.conflicts.map((c) => c['group_key']! as String).toSet() ??
-        <String>{};
+    final groups = account.conflicts
+        .map((c) => c['group_key']! as String)
+        .toSet();
     return CupertinoPageScaffold(
       navigationBar: AppNavigationBar(middle: Text('accountSync'.tr())),
       child: SafeArea(
@@ -95,6 +95,7 @@ class AccountScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text('accountGuestInfo'.tr(), textAlign: TextAlign.center),
               ] else if (account.user == null) ...[
+                if (account.workingLocally) _Message('accountWorkingLocally'),
                 const _EmailAccountForm(),
                 const SizedBox(height: 12),
                 Text('accountGuestInfo'.tr(), textAlign: TextAlign.center),
@@ -137,26 +138,6 @@ class AccountScreen extends StatelessWidget {
                   ],
                 ),
                 if (sync?.errorKey != null) _Message(sync!.errorKey!),
-                if (groups.isNotEmpty)
-                  AppListSection(
-                    header: Text('syncConflicts'.tr()),
-                    children: [
-                      for (final group in groups)
-                        CupertinoListTile(
-                          title: Text('syncReviewChanges'.tr()),
-                          subtitle: Text(_groupTitle(group, sync!.conflicts)),
-                          trailing: const CupertinoListTileChevron(),
-                          onTap: disabled
-                              ? null
-                              : () => Navigator.of(context).push(
-                                  NoAnimationPageRoute(
-                                    builder: (_) =>
-                                        _ConflictScreen(group: group),
-                                  ),
-                                ),
-                        ),
-                    ],
-                  ),
                 if (account.importAvailable)
                   AppListSection(
                     children: [
@@ -185,6 +166,7 @@ class AccountScreen extends StatelessWidget {
                   children: [
                     CupertinoListTile(
                       title: Text('accountSignOut'.tr()),
+                      subtitle: Text('accountSignOutSubtitle'.tr()),
                       onTap: disabled
                           ? null
                           : () async {
@@ -243,6 +225,25 @@ class AccountScreen extends StatelessWidget {
                   ],
                 ),
               ],
+              if (groups.isNotEmpty)
+                AppListSection(
+                  header: Text('syncConflicts'.tr()),
+                  children: [
+                    for (final group in groups)
+                      CupertinoListTile(
+                        title: Text('syncReviewChanges'.tr()),
+                        subtitle: Text(_groupTitle(group, account.conflicts)),
+                        trailing: const CupertinoListTileChevron(),
+                        onTap: disabled
+                            ? null
+                            : () => Navigator.of(context).push(
+                                NoAnimationPageRoute(
+                                  builder: (_) => _ConflictScreen(group: group),
+                                ),
+                              ),
+                      ),
+                  ],
+                ),
               if (account.errorKey != null) _Message(account.errorKey!),
               if (account.working)
                 const Padding(
@@ -339,13 +340,9 @@ class _ConflictScreenState extends State<_ConflictScreen> {
 
   Future<List<({Map<String, dynamic> remote, Map<String, dynamic>? local})>>
   _load() async {
-    final sync = context.read<AccountProvider>().sync!;
-    await sync.syncNow();
-    final remotes = await sync.transport.group(
+    final remotes = await context.read<AccountProvider>().conflictDetails(
       widget.group,
-      await sync.store.pending(),
     );
-    await sync.store.saveConflicts(remotes, widget.group);
     final db = await DatabaseHelper.instance.database;
     final result =
         <({Map<String, dynamic> remote, Map<String, dynamic>? local})>[];
@@ -398,7 +395,12 @@ class _ConflictScreenState extends State<_ConflictScreen> {
               return ListView(
                 padding: const EdgeInsets.all(20),
                 children: [
-                  Text('syncConflictExplanation'.tr()),
+                  Text(
+                    (snapshot.data!.any((i) => i.remote['source'] == 'backup')
+                            ? 'backupConflictExplanation'
+                            : 'syncConflictExplanation')
+                        .tr(),
+                  ),
                   const SizedBox(height: 16),
                   for (final item in snapshot.data!)
                     AppListSection(
@@ -417,7 +419,10 @@ class _ConflictScreenState extends State<_ConflictScreen> {
                               _Version(data: item.local),
                               const SizedBox(height: 16),
                               Text(
-                                'syncCloudVersion'.tr(),
+                                (item.remote['source'] == 'backup'
+                                        ? 'backupVersion'
+                                        : 'syncCloudVersion')
+                                    .tr(),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -438,24 +443,39 @@ class _ConflictScreenState extends State<_ConflictScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: CupertinoButton.filled(
-                        onPressed: sync == null || sync.busy
+                        onPressed:
+                            account.working ||
+                                account.switching ||
+                                sync?.busy == true
                             ? null
                             : () async {
-                                await sync.resolve(
+                                await account.resolveConflict(
                                   widget.group,
                                   keepLocal: keepLocal,
                                 );
-                                if (context.mounted && sync.errorKey == null) {
+                                if (context.mounted &&
+                                    account.errorKey == null &&
+                                    !account.conflicts.any(
+                                      (c) => c['group_key'] == widget.group,
+                                    )) {
                                   Navigator.pop(context);
                                 }
                               },
                         child: Text(
-                          (keepLocal ? 'syncKeepDevice' : 'syncKeepCloud').tr(),
+                          (keepLocal
+                                  ? 'syncKeepDevice'
+                                  : snapshot.data!.any(
+                                      (i) => i.remote['source'] == 'backup',
+                                    )
+                                  ? 'backupUseVersion'
+                                  : 'syncKeepCloud')
+                              .tr(),
                         ),
                       ),
                     ),
                   if (sync?.busy == true) const CupertinoActivityIndicator(),
                   if (sync?.errorKey != null) _Message(sync!.errorKey!),
+                  if (account.errorKey != null) _Message(account.errorKey!),
                 ],
               );
             },

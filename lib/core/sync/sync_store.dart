@@ -97,6 +97,35 @@ END''',
 
   Future<List<Map<String, Object?>>> pending() => db.query('sync_outbox');
   Future<List<Map<String, Object?>>> conflicts() => db.query('sync_conflicts');
+  Future<bool> hasImportConflicts() async => (await conflicts()).any(
+    (row) =>
+        (jsonDecode(row['remote']! as String) as Map)['source'] == 'backup',
+  );
+
+  static Future<String> groupKey(
+    DatabaseExecutor db,
+    String entity,
+    Map<String, dynamic> row,
+  ) async {
+    if (entity == 'projects') return 'project:${row['id']}';
+    if (entity == 'tasks' || entity == 'project_members') {
+      return 'project:${row['projectId']}';
+    }
+    if (entity == 'task_assignees' ||
+        entity == 'incomes' ||
+        entity == 'expenses') {
+      final tasks = await db.query(
+        'tasks',
+        columns: ['projectId'],
+        where: 'id=?',
+        whereArgs: [row['taskId']],
+      );
+      if (tasks.isNotEmpty) return 'project:${tasks.first['projectId']}';
+      if (entity == 'task_assignees') return 'task:${row['taskId']}';
+    }
+    return '$entity:${row['id']}';
+  }
+
   Future<int> get cursor async =>
       (await db.query('sync_control')).first['cursor']! as int;
 
@@ -286,6 +315,13 @@ END''',
           ),
         )
         .toList();
+    if (remotes.every((r) => r['source'] == 'backup')) {
+      remotes.sort(
+        (a, b) => tables
+            .indexOf(a['entity'] as String)
+            .compareTo(tables.indexOf(b['entity'] as String)),
+      );
+    }
     final localized = <Map<String, dynamic>>[];
     for (final remote in remotes) {
       localized.add(
@@ -302,6 +338,21 @@ END''',
       for (var i = 0; i < remotes.length; i++) {
         final remote = remotes[i];
         final key = [remote['entity'], remote['record_id']];
+        if (remote['source'] == 'backup') {
+          // A backup is a proposed local edit, never an acknowledged cloud
+          // version. Keep the existing row until the user chooses to import it.
+          if (!keepLocal) {
+            await tx.update('sync_control', {'suppressed': 0});
+            await putRow(
+              tx,
+              remote['entity'] as String,
+              Map<String, dynamic>.from(remote['payload'] as Map),
+              deleted: false,
+            );
+            await tx.update('sync_control', {'suppressed': 1});
+          }
+          continue;
+        }
         if (keepLocal) {
           final pending = await tx.query(
             'sync_outbox',
