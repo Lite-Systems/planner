@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:planner/models/expense.dart';
@@ -11,6 +12,7 @@ import 'package:planner/models/project_member.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
+import '../sync/sync_store.dart';
 import '../../models/project.dart';
 import '../../models/project_task.dart';
 import '../../models/sticky_note.dart';
@@ -24,6 +26,41 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
+  String? _accountId;
+  String? get accountId => _accountId;
+  Future<String> get activePath async {
+    final directory = await getDatabasesPath();
+    return _accountId == null
+        ? resolveDbPath(directory)
+        : join(directory, 'accounts', _accountId!, dbFileName);
+  }
+
+  Future<void> switchAccount(String? id) async {
+    if (id != null && !RegExp(r'^[a-zA-Z0-9_-]+$').hasMatch(id)) {
+      throw ArgumentError('Invalid account identifier');
+    }
+    if (_accountId == id) return;
+    await close();
+    _accountId = id;
+    await database;
+  }
+
+  Future<void> setAccountPreference(String key, Object value) async {
+    final db = await database;
+    await db.insert('account_settings', {
+      'id': key,
+      'value': jsonEncode(value),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<Map<String, dynamic>> accountPreferences() async {
+    final db = await database;
+    return {
+      for (final row in await db.query('account_settings'))
+        row['id']! as String: jsonDecode(row['value']! as String),
+    };
+  }
+
   Future<Database> get database async {
     if (_database != null) return _database!;
     _databaseOpening ??= _initDB();
@@ -33,14 +70,15 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB() async {
-    final dbPath = await getDatabasesPath();
-    final path = await resolveDbPath(dbPath);
+    final path = await activePath;
+    await Directory(dirname(path)).create(recursive: true);
 
     return await openDatabase(
       path,
-      version: 23,
+      version: 24,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
+      onOpen: (db) => SyncStore.install(db, enabled: _accountId != null),
     );
   }
 
@@ -589,8 +627,12 @@ CREATE TABLE tasks (
   }
 
   Future<void> resetDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, dbFileName);
+    if (_accountId != null) {
+      throw StateError(
+        'Use Account & Sync to clear this device or delete cloud data.',
+      );
+    }
+    final path = await activePath;
     await close();
     await deleteDatabase(path);
   }
@@ -635,23 +677,20 @@ CREATE TABLE tasks (
   }
 
   Future<int> deleteProject(String id) async {
-    final db = await instance.database;
-    final tasks = await db.query(
-      'tasks',
-      columns: ['id'],
-      where: 'projectId = ?',
-      whereArgs: [id],
-    );
-    for (final row in tasks) {
-      await db.delete(
-        'task_assignees',
-        where: 'taskId = ?',
-        whereArgs: [row['id']],
+    final db = await database;
+    return db.transaction((tx) async {
+      final tasks = await tx.query(
+        'tasks',
+        columns: ['id'],
+        where: 'projectId=?',
+        whereArgs: [id],
       );
-    }
-    await db.delete('project_members', where: 'projectId = ?', whereArgs: [id]);
-    await db.delete('tasks', where: 'projectId = ?', whereArgs: [id]);
-    return await db.delete('projects', where: 'id = ?', whereArgs: [id]);
+      for (final row in tasks) {
+        await _deleteTask(tx, row['id']! as String);
+      }
+      await tx.delete('project_members', where: 'projectId=?', whereArgs: [id]);
+      return tx.delete('projects', where: 'id=?', whereArgs: [id]);
+    });
   }
 
   Future<int> updateProject(Project project) async {
@@ -666,8 +705,57 @@ CREATE TABLE tasks (
 
   // Tasks CRUD
   Future<int> insertTask(ProjectTask task) async {
-    final db = await instance.database;
-    return await db.insert('tasks', task.toMap());
+    final db = await database;
+    return db.transaction((tx) async {
+      final result = await tx.insert('tasks', task.toMap());
+      await _saveTaskRelations(tx, task);
+      return result;
+    });
+  }
+
+  Future<void> _saveTaskRelations(DatabaseExecutor tx, ProjectTask task) async {
+    await tx.delete('task_assignees', where: 'taskId=?', whereArgs: [task.id]);
+    for (final memberId in task.assigneeIds) {
+      await tx.insert('task_assignees', {
+        'taskId': task.id,
+        'memberId': memberId,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+    if (!task.isPaid) {
+      await tx.delete('incomes', where: 'taskId=?', whereArgs: [task.id]);
+      return;
+    }
+    final existing = await tx.query(
+      'incomes',
+      where: 'taskId=?',
+      whereArgs: [task.id],
+    );
+    if (existing.isNotEmpty) return;
+    final categories = await tx.query('income_categories');
+    if (categories.isEmpty) {
+      await tx.insert('income_categories', {
+        'id': 'inc_projects',
+        'name': 'Projects',
+        'color': 0xFF10B981,
+        'icon': 0xe0af,
+        'isDefault': 1,
+      });
+    }
+    final category =
+        categories.any((c) => c['id'] == 'inc_projects') || categories.isEmpty
+        ? 'inc_projects'
+        : categories.first['id'];
+    await tx.insert('incomes', {
+      'id': 'task_income_${task.id}',
+      'title': task.name,
+      'amount': task.cost,
+      'date': DateTime.now().toIso8601String(),
+      'categoryId': category,
+      'paymentMethodId': task.paymentMethodId,
+      'taskId': task.id,
+      'note': 'Task payment',
+      'currency': task.currency,
+    });
   }
 
   Future<List<ProjectTask>> getTasks(String projectId) async {
@@ -690,20 +778,35 @@ CREATE TABLE tasks (
         .toList();
   }
 
-  Future<int> deleteTask(String id) async {
-    final db = await instance.database;
-    await db.delete('task_assignees', where: 'taskId = ?', whereArgs: [id]);
-    return await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
+  Future<int> _deleteTask(DatabaseExecutor tx, String id) async {
+    await tx.delete('incomes', where: 'taskId=?', whereArgs: [id]);
+    await tx.update(
+      'expenses',
+      {'taskId': null},
+      where: 'taskId=?',
+      whereArgs: [id],
+    );
+    await tx.delete('task_assignees', where: 'taskId=?', whereArgs: [id]);
+    return tx.delete('tasks', where: 'id=?', whereArgs: [id]);
+  }
+
+  Future<int> deleteTask(String id, [String? projectId]) async {
+    final db = await database;
+    return db.transaction((tx) => _deleteTask(tx, id));
   }
 
   Future<int> updateTask(ProjectTask task) async {
-    final db = await instance.database;
-    return await db.update(
-      'tasks',
-      task.toMap(),
-      where: 'id = ?',
-      whereArgs: [task.id],
-    );
+    final db = await database;
+    return db.transaction((tx) async {
+      final result = await tx.update(
+        'tasks',
+        task.toMap(),
+        where: 'id=?',
+        whereArgs: [task.id],
+      );
+      await _saveTaskRelations(tx, task);
+      return result;
+    });
   }
 
   Future<List<ProjectTask>> getAllTasks() async {
@@ -1050,10 +1153,7 @@ CREATE TABLE tasks (
 
   Future<List<StickyNote>> getStickyNotes() async {
     final db = await instance.database;
-    final result = await db.query(
-      'sticky_notes',
-      orderBy: 'updatedAt DESC',
-    );
+    final result = await db.query('sticky_notes', orderBy: 'updatedAt DESC');
     return result.map(StickyNote.fromMap).toList();
   }
 

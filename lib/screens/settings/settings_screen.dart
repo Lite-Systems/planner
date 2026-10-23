@@ -11,6 +11,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/account_provider.dart';
+import '../account/account_screen.dart';
 import '../../providers/locale_provider.dart';
 import '../../core/services/database_backup_service.dart';
 import '../../core/services/database_helper.dart';
@@ -57,6 +59,26 @@ class _SettingsList extends StatelessWidget {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(16.0),
           children: [
+            if (context.watch<AccountProvider?>() != null)
+              AppListSection(
+                margin: const EdgeInsets.all(8),
+                children: [
+                  CupertinoListTile(
+                    leading: const Icon(CupertinoIcons.person_crop_circle),
+                    title: Text('accountSync'.tr()),
+                    subtitle: Text(
+                      context.watch<AccountProvider>().user?.email ??
+                          'accountGuestInfo'.tr(),
+                    ),
+                    trailing: const CupertinoListTileChevron(),
+                    onTap: () => Navigator.of(context).push(
+                      NoAnimationPageRoute(
+                        builder: (_) => const AccountScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             // Language Selection
             AppListSection(
               margin: EdgeInsets.all(8),
@@ -931,6 +953,14 @@ class _SettingsList extends StatelessWidget {
                   ),
                   subtitle: Text('resetDatabaseSubtitle'.tr()),
                   onTap: () {
+                    if (DatabaseHelper.instance.accountId != null) {
+                      Navigator.of(context).push(
+                        NoAnimationPageRoute(
+                          builder: (_) => const AccountScreen(),
+                        ),
+                      );
+                      return;
+                    }
                     showCupertinoDialog(
                       useRootNavigator: false,
                       context: context,

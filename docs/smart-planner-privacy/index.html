@@ -177,7 +177,7 @@
 
 <div class="header">
   <h1>Privacy Policy</h1>
-  <p>Last updated: <strong>[Insert Date]</strong></p>
+  <p>Last updated: <strong>October 23, 2026</strong></p>
 </div>
 
 <div class="container">
@@ -193,12 +193,13 @@
       <h2><span class="num">1</span>What Information Do We Collect?</h2>
 
       <h3>Personal information you disclose to us</h3>
-      <p>We do not collect any personal data directly. The App is designed to store your data (tasks, expenses, and settings) locally on your device using SQLite databases and SharedPreferences. This means your personal and financial data never leaves your device unless you choose to back it up or share it.</p>
+      <p>You may use the App without an account. In guest mode, projects, tasks, finances, notes, files, and preferences are stored locally. If you choose to create an account with email and password, Firebase Authentication processes those credentials and returns an account identifier and authentication session. Your planner records and selected preferences are synchronized through Cloud Firestore so you can use them on other devices. Images and attachments remain local to each device. Importing existing guest data into an account is optional.</p>
 
       <h3>Information collected through third-party services</h3>
-      <p>While we do not collect your personal data, the App may use third-party services that may collect information used to identify you. The third-party service providers used by the App include:</p>
+      <p>The App uses these services for the features you choose:</p>
       <ul>
-        <li><strong>Firebase / Google Analytics:</strong> To help us understand how the App is being used and to identify bugs or crashes.</li>
+        <li><strong>Firebase Authentication:</strong> Creates and authenticates optional email/password accounts, sends password-reset emails, and manages authentication tokens. The App does not persist your password.</li>
+        <li><strong>Cloud Firestore:</strong> Hosts private planner records and synchronization versions. Database security rules restrict each user to their own records. Hosting administrators may have operational access; this service is not end-to-end encrypted.</li>
         <li><strong>Speech To Text:</strong> Voice recognition data is processed by your device's native speech recognition services (e.g., Google Speech Services on Android, Apple Speech on iOS) according to their respective privacy policies.</li>
       </ul>
     </section>
@@ -206,12 +207,12 @@
     <section>
       <h2><span class="num">2</span>How Do We Use Your Information?</h2>
       <div class="highlight-box">
-        <p>Since your data is stored locally, we do not have access to your tasks or financial records.</p>
+        <p>Guest data stays on your device unless you import, export, or share it. Signed-in account data is processed to store your records and synchronize changes across your devices.</p>
       </div>
-      <p>Any diagnostic data collected via third-party services (like Firebase) is used solely to:</p>
+      <p>We use account and synchronization information to:</p>
       <ul>
-        <li>Monitor and analyze usage and trends to improve your experience with the App.</li>
-        <li>Troubleshoot software bugs and operational problems.</li>
+        <li>Authenticate your account and synchronize the planner records and files you choose to save.</li>
+        <li>Resolve synchronization conflicts, maintain service reliability, and complete requested account deletion.</li>
       </ul>
     </section>
 
@@ -222,12 +223,12 @@
 
     <section>
       <h2><span class="num">4</span>How Long Do We Keep Your Information?</h2>
-      <p>Your local data is kept for as long as you have the App installed on your device. You can delete all your data at any time by uninstalling the App or clearing the App's data from your device settings.</p>
+      <p>Local records and files remain until you remove the App’s data. Signing out preserves unsynced changes privately on that device for the same account. Importing guest data creates a local backup; guest data and exported backups remain independent copies. Cloud planner records and synchronization versions remain until account deletion. The free plan does not upload images or attachments. Use Settings → Account &amp; Sync → Delete account and cloud data to delete your hosted account and cloud planner records. A minimal deletion marker is retained to prevent another device’s unexpired session from recreating deleted data. If deletion is interrupted, retry it to finish cleanup. Uninstalling alone does not delete cloud data. Delete downloaded copies and backups separately on other devices; an offline device cannot be remotely erased.</p>
     </section>
 
     <section>
       <h2><span class="num">5</span>How Do We Keep Your Information Safe?</h2>
-      <p>We rely on the built-in security features of your mobile operating system (iOS or Android). Additionally, the App may offer biometric authentication (Face ID/Touch ID) to restrict physical access to your financial data within the App. However, please remember that we cannot guarantee absolute security of data transmitted over the internet (e.g., via third-party integrations).</p>
+      <p>Authentication sessions are stored using the operating system’s secure credential storage. Cloud connections use HTTPS and hosted records are restricted to their account. The local SQLite database and cached files are protected by your operating system’s app storage; they are not additionally encrypted by this feature. Optional biometric app lock restricts access through the app. No storage or transmission system can guarantee absolute security.</p>
     </section>
 
     <section>

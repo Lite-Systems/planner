@@ -10,6 +10,14 @@ Smart Planner is a comprehensive freelance, project, task, and finance managemen
 - **UI:** Responsive Cupertino with shared navy/orange styling, light/dark themes and top-bar module navigation (no sidebar)
 - **Platforms:** Android, iOS, Web, macOS, Windows, Linux
 
+## Optional accounts and sync
+
+Email/password accounts and private cross-device sync use Firebase Authentication
+and Cloud Firestore on the free Spark plan. Projects, tasks, finances, notes, and
+selected preferences save locally first; images and attachments remain on each
+device. Accounts are optional. See [Firebase setup](docs/ACCOUNT_SYNC.md) for the
+security rules, project configuration, and verification. Free hosting has quotas.
+
 ## Features
 
 ### Home Dashboard

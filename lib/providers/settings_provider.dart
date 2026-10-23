@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../core/services/currency_service.dart';
+import '../core/services/database_helper.dart';
 import '../core/utils/currency_helper.dart';
 
 class SettingsProvider with ChangeNotifier {
@@ -34,6 +35,7 @@ class SettingsProvider with ChangeNotifier {
   List<String> listCurency = CurrencyHelper.codes;
 
   bool get isBiometricEnabled => _isBiometricEnabled;
+  bool get requiresInitialUnlock => _isBiometricEnabled && !_hasUnlockedOnce;
   bool get hideAmounts => _hideAmounts;
   bool get isAppLocked => _isAppLocked && _isBiometricEnabled;
   bool get areSettingsLoaded => _areSettingsLoaded;
@@ -65,6 +67,50 @@ class SettingsProvider with ChangeNotifier {
     _settingsReady = _loadSettings();
   }
 
+  static const syncedKeys = {
+    'currency',
+    'expensesCurrency',
+    'hourCost',
+    'showHourCostInPrint',
+    'showTaskTimeInPrint',
+    'showTaskTypeInPrint',
+    'showSubtasksInPrint',
+  };
+
+  Future<void> reloadAccountSettings() => _loadSettings();
+
+  Map<String, dynamic> get syncedPreferences => {
+    'currency': _currency,
+    'expensesCurrency': _expensesCurrency,
+    'hourCost': _hourCost,
+    'showHourCostInPrint': _showHourCostInPrint,
+    'showTaskTimeInPrint': _showTaskTimeInPrint,
+    'showTaskTypeInPrint': _showTaskTypeInPrint,
+    'showSubtasksInPrint': _showSubtasksInPrint,
+  };
+
+  static Future<Map<String, dynamic>> guestPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      'currency': prefs.getString('currency') ?? 'EGP',
+      'expensesCurrency': prefs.getString('expensesCurrency') ?? 'USD',
+      'hourCost': prefs.getDouble('hourCost') ?? 5.0,
+      for (final key in syncedKeys.where((k) => k.startsWith('show')))
+        key: prefs.getBool(key) ?? true,
+    };
+  }
+
+  Future<void> _saveSyncedPreference(String key, Object value) async {
+    if (DatabaseHelper.instance.accountId != null) {
+      await DatabaseHelper.instance.setAccountPreference(key, value);
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (value is String) await prefs.setString(key, value);
+    if (value is double) await prefs.setDouble(key, value);
+    if (value is bool) await prefs.setBool(key, value);
+  }
+
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     _isBiometricEnabled = prefs.getBool('isBiometricEnabled') ?? false;
@@ -89,6 +135,20 @@ class SettingsProvider with ChangeNotifier {
     _keyboardShortcuts = prefs.getBool('keyboardShortcuts') ?? true;
     _macosWidgetEnabled = prefs.getBool('macosWidgetEnabled') ?? false;
     _lastSection = prefs.getString('lastSection') ?? 'home';
+    if (DatabaseHelper.instance.accountId != null) {
+      final cloud = await DatabaseHelper.instance.accountPreferences();
+      _currency = CurrencyHelper.normalize(
+        cloud['currency'] as String? ?? 'EGP',
+      );
+      _expensesCurrency = CurrencyHelper.normalize(
+        cloud['expensesCurrency'] as String? ?? 'USD',
+      );
+      _hourCost = (cloud['hourCost'] as num?)?.toDouble() ?? 5.0;
+      _showHourCostInPrint = cloud['showHourCostInPrint'] as bool? ?? true;
+      _showTaskTimeInPrint = cloud['showTaskTimeInPrint'] as bool? ?? true;
+      _showTaskTypeInPrint = cloud['showTaskTypeInPrint'] as bool? ?? true;
+      _showSubtasksInPrint = cloud['showSubtasksInPrint'] as bool? ?? true;
+    }
     _areSettingsLoaded = true;
     notifyListeners();
   }
@@ -179,18 +239,16 @@ class SettingsProvider with ChangeNotifier {
   Future<void> setCurrency(String value) async {
     final normalized = CurrencyHelper.normalize(value);
     if (_currency == normalized) return;
-    final prefs = await SharedPreferences.getInstance();
     _currency = normalized;
-    await prefs.setString('currency', _currency);
+    await _saveSyncedPreference('currency', _currency);
     notifyListeners();
   }
 
   Future<void> setExpensesCurrency(String value) async {
     final normalized = CurrencyHelper.normalize(value);
     if (_expensesCurrency == normalized) return;
-    final prefs = await SharedPreferences.getInstance();
     _expensesCurrency = normalized;
-    await prefs.setString('expensesCurrency', _expensesCurrency);
+    await _saveSyncedPreference('expensesCurrency', _expensesCurrency);
     notifyListeners();
   }
 
@@ -206,41 +264,36 @@ class SettingsProvider with ChangeNotifier {
 
   Future<void> setHourCost(double value) async {
     if (_hourCost == value) return;
-    final prefs = await SharedPreferences.getInstance();
     _hourCost = value;
-    await prefs.setDouble('hourCost', value);
+    await _saveSyncedPreference('hourCost', value);
     notifyListeners();
   }
 
   Future<void> setShowHourCostInPrint(bool value) async {
     if (_showHourCostInPrint == value) return;
-    final prefs = await SharedPreferences.getInstance();
     _showHourCostInPrint = value;
-    await prefs.setBool('showHourCostInPrint', value);
+    await _saveSyncedPreference('showHourCostInPrint', value);
     notifyListeners();
   }
 
   Future<void> setShowTaskTimeInPrint(bool value) async {
     if (_showTaskTimeInPrint == value) return;
-    final prefs = await SharedPreferences.getInstance();
     _showTaskTimeInPrint = value;
-    await prefs.setBool('showTaskTimeInPrint', value);
+    await _saveSyncedPreference('showTaskTimeInPrint', value);
     notifyListeners();
   }
 
   Future<void> setShowTaskTypeInPrint(bool value) async {
     if (_showTaskTypeInPrint == value) return;
-    final prefs = await SharedPreferences.getInstance();
     _showTaskTypeInPrint = value;
-    await prefs.setBool('showTaskTypeInPrint', value);
+    await _saveSyncedPreference('showTaskTypeInPrint', value);
     notifyListeners();
   }
 
   Future<void> setShowSubtasksInPrint(bool value) async {
     if (_showSubtasksInPrint == value) return;
-    final prefs = await SharedPreferences.getInstance();
     _showSubtasksInPrint = value;
-    await prefs.setBool('showSubtasksInPrint', value);
+    await _saveSyncedPreference('showSubtasksInPrint', value);
     notifyListeners();
   }
 

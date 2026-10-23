@@ -1,32 +1,13 @@
 {
   "project_info": {
-    "project_number": "347456717704",
-    "project_id": "masrofy-app",
-    "storage_bucket": "masrofy-app.firebasestorage.app"
+    "project_number": "86456329851",
+    "project_id": "smart-planner-lite-705372",
+    "storage_bucket": "smart-planner-lite-705372.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:347456717704:android:a8e667041dbf25a7fdb03d",
-        "android_client_info": {
-          "package_name": "com.hany.smartplanner"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCIoTHvdA8FMJZBNT3wVy1QmnRwaVZsLQg"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:347456717704:android:84b1542a9a40027dfdb03d",
+        "mobilesdk_app_id": "1:86456329851:android:4184ffcacb8b08188fe4de",
         "android_client_info": {
           "package_name": "com.lite.smartplanner"
         }
@@ -34,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCIoTHvdA8FMJZBNT3wVy1QmnRwaVZsLQg"
+          "current_key": "AIzaSyDo_U7ysSKkduDuk6LQaVxayqpqoTYZzto"
         }
       ],
       "services": {

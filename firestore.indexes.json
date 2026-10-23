@@ -1,0 +1,8 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "records", "fieldPath": "payload", "indexes": [] },
+    { "collectionGroup": "records", "fieldPath": "mutation_id", "indexes": [] },
+    { "collectionGroup": "records", "fieldPath": "base_version", "indexes": [] }
+  ]
+}

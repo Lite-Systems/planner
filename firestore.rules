@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function head(uid) { return /databases/$(database)/documents/plannerUsers/$(uid); }
+    function deleting(uid) { return exists(head(uid)) && get(head(uid)).data.deleting; }
+    function version(uid) { return exists(head(uid)) ? get(head(uid)).data.version : 0; }
+    function validRecord(uid) {
+      let data = request.resource.data;
+      return data.keys().hasAll(['entity','record_id','group_key','payload','deleted','version','base_version','mutation_id'])
+        && data.keys().hasOnly(['entity','record_id','group_key','payload','deleted','version','base_version','mutation_id'])
+        && data.entity in ['payment_methods','income_categories','expense_categories','projects','project_members','tasks','task_assignees','incomes','expenses','sticky_notes','account_settings']
+        && data.record_id is string && data.record_id.size() > 0 && data.record_id.size() < 500
+        && data.group_key is string && data.group_key.size() < 600
+        && data.payload is map && data.deleted is bool
+        && data.version is int && data.base_version is int && data.mutation_id is string
+        && data.mutation_id.size() > 0 && data.mutation_id.size() < 600
+        && data.version > version(uid)
+        && data.version <= getAfter(head(uid)).data.version
+        && !getAfter(head(uid)).data.deleting
+        && (data.entity != 'projects' || data.payload.imagePath == null)
+        && (data.entity != 'tasks' || data.payload.attachments == '[]');
+    }
+    match /plannerUsers/{uid} {
+      allow read: if owner(uid);
+      allow create: if owner(uid)
+        && request.resource.data.keys().hasOnly(['version','deleting'])
+        && request.resource.data.version is int && request.resource.data.version >= 0
+        && request.resource.data.version <= 400 && request.resource.data.deleting is bool;
+      allow update: if owner(uid) && !resource.data.deleting
+        && request.resource.data.keys().hasOnly(['version','deleting'])
+        && request.resource.data.deleting is bool && request.resource.data.version is int
+        && request.resource.data.version >= resource.data.version
+        && request.resource.data.version <= resource.data.version + 400;
+      // A minimal deletion marker blocks stale tokens on other devices.
+      allow delete: if false;
+      match /records/{record} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && !deleting(uid) && validRecord(uid)
+          && request.resource.data.base_version == 0;
+        allow update: if owner(uid) && !deleting(uid) && validRecord(uid)
+          && request.resource.data.base_version == resource.data.version;
+        allow delete: if owner(uid) && deleting(uid);
+      }
+    }
+  }
+}

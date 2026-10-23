@@ -1,1 +1,52 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"masrofy-app","appId":"1:347456717704:android:a8e667041dbf25a7fdb03d","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"masrofy-app","appId":"1:347456717704:ios:2a3005d5cd85db97fdb03d","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"masrofy-app","appId":"1:347456717704:ios:2a3005d5cd85db97fdb03d","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"masrofy-app","configurations":{"android":"1:347456717704:android:a8e667041dbf25a7fdb03d","ios":"1:347456717704:ios:2a3005d5cd85db97fdb03d","macos":"1:347456717704:ios:2a3005d5cd85db97fdb03d","web":"1:347456717704:web:44206596d94a6c11fdb03d","windows":"1:347456717704:web:b3bd28d890d1d759fdb03d"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "smart-planner-lite-705372",
+          "appId": "1:86456329851:android:4184ffcacb8b08188fe4de",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "smart-planner-lite-705372",
+          "appId": "1:86456329851:ios:952e84bd9ae2ccdc8fe4de",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "smart-planner-lite-705372",
+          "appId": "1:86456329851:ios:952e84bd9ae2ccdc8fe4de",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true
+    }
+  }
+}

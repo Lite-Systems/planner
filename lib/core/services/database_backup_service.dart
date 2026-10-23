@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../sync/account_data_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:planner/core/services/database_helper.dart';
 import 'package:path/path.dart';
@@ -94,8 +95,14 @@ class DatabaseBackupService {
   static Future<void> restoreBackup(String sourcePath) async {
     await validateBackupFile(sourcePath);
 
-    final dbPath = await getDatabasesPath();
-    final targetPath = join(dbPath, _dbName);
+    if (DatabaseHelper.instance.accountId != null) {
+      // Keep cloud versions/tombstones. Importing a backup is a merge; it must
+      // never rewind a download cursor or transplant ownership metadata.
+      await createBackupFile();
+      await AccountDataService.mergeDatabase(sourcePath);
+      return;
+    }
+    final targetPath = await DatabaseHelper.instance.activePath;
     final sourceFile = File(sourcePath);
     if (!await sourceFile.exists()) {
       throw Exception('Source backup file not found');

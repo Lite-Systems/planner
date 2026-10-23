@@ -20,6 +20,7 @@ class ProjectProvider with ChangeNotifier {
   /// Optional callback fired when a task's isPaid status changes.
   /// Wired to IncomeProvider in HomeScreen after providers are available.
   TaskPaidCallback? onTaskPaidChanged;
+  Future<void> Function()? onFinancialDataChanged;
 
   List<Project> get projects => _projects;
 
@@ -175,6 +176,7 @@ class ProjectProvider with ChangeNotifier {
 
   Future<void> deleteProject(String id) async {
     await DatabaseHelper.instance.deleteProject(id);
+    await onFinancialDataChanged?.call();
     _projects.removeWhere((p) => p.id == id);
     _tasks.remove(id);
     _members.remove(id);
@@ -233,9 +235,7 @@ class ProjectProvider with ChangeNotifier {
 
   Future<void> addTask(ProjectTask task) async {
     await DatabaseHelper.instance.insertTask(task);
-    if (task.assigneeIds.isNotEmpty) {
-      await DatabaseHelper.instance.setTaskAssignees(task.id, task.assigneeIds);
-    }
+    if (task.isPaid) await onFinancialDataChanged?.call();
     _tasks.putIfAbsent(task.projectId, () => []).add(task);
     await _syncTaskReminder(task);
     await _refreshStats();
@@ -258,10 +258,6 @@ class ProjectProvider with ChangeNotifier {
       );
     }
     await DatabaseHelper.instance.updateTask(taskToUpdate);
-    await DatabaseHelper.instance.setTaskAssignees(
-      taskToUpdate.id,
-      taskToUpdate.assigneeIds,
-    );
     if (_tasks.containsKey(taskToUpdate.projectId)) {
       final index = _tasks[taskToUpdate.projectId]!.indexWhere(
         (t) => t.id == taskToUpdate.id,
@@ -273,6 +269,7 @@ class ProjectProvider with ChangeNotifier {
     await _refreshStats();
     notifyListeners();
     await _syncTaskReminder(taskToUpdate);
+    if (paymentChanged) await onFinancialDataChanged?.call();
     if (paymentChanged && onTaskPaidChanged != null) {
       await onTaskPaidChanged!(taskToUpdate, taskToUpdate.isPaid);
     }
@@ -280,11 +277,19 @@ class ProjectProvider with ChangeNotifier {
 
   Future<void> deleteTask(String id, String projectId) async {
     await DatabaseHelper.instance.deleteTask(id);
+    await onFinancialDataChanged?.call();
     await NotificationService().cancelTaskReminder(id);
     if (_tasks.containsKey(projectId)) {
       _tasks[projectId]!.removeWhere((t) => t.id == id);
       await _refreshStats();
       notifyListeners();
+    }
+  }
+
+  Future<void> refreshReminders() async {
+    await NotificationService().cancelAllTaskReminders();
+    for (final task in _tasks.values.expand((tasks) => tasks)) {
+      await _syncTaskReminder(task);
     }
   }
 

@@ -12,6 +12,10 @@ import 'package:upgrader/upgrader.dart';
 import 'core/utils/app_layout.dart';
 import 'core/utils/app_thems.dart';
 import 'providers/settings_provider.dart';
+import 'providers/account_provider.dart';
+import 'core/sync/firebase_auth_service.dart';
+import 'core/services/database_helper.dart';
+import 'screens/account/account_guard.dart';
 import 'providers/sticky_notes_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/project_provider.dart';
@@ -40,10 +44,16 @@ void main() async {
     log('Localization initialization failed: $e');
   }
 
+  await FirebaseAuthService.instance.initialize();
+  await DatabaseHelper.instance.switchAccount(
+    FirebaseAuthService.instance.user?.id,
+  );
+
   runApp(
     RestartWidget(
       child: MultiProvider(
         providers: [
+          ChangeNotifierProvider(create: (_) => AccountProvider()),
           ChangeNotifierProvider(create: (_) => SettingsProvider()),
           ChangeNotifierProvider(create: (_) => WalletProvider()),
           ChangeNotifierProvider(create: (_) => ProjectProvider()),
@@ -111,28 +121,41 @@ class _ProviderWiringState extends State<ProviderWiring> {
     final wallet = Provider.of<WalletProvider>(context, listen: false);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     // Paying a task creates the matching income record; unpaying removes it.
-    projects.onTaskPaidChanged = (task, isPaid) async {
-      if (isPaid) {
-        await income.addIncomeFromTask(task, settings.currency);
-      } else {
-        await income.removeIncomeForTask(task.id);
-      }
+    projects.onFinancialDataChanged = () async {
+      await Future.wait([income.loadData(), expenses.loadData()]);
     };
     // Wallet balances follow income/expense changes via a SQL-grouped cache.
     income.addListener(() => unawaited(wallet.refreshFlowTotals()));
     expenses.addListener(() => unawaited(wallet.refreshFlowTotals()));
-    // Load every provider in parallel after the first frame; each notifies its
-    // listeners when ready.
+    final account = context.read<AccountProvider>();
+    Future<void> reloadData() async {
+      await Future.wait([
+        wallet.loadData(),
+        projects.loadData(),
+        expenses.loadData(),
+        income.loadData(),
+        notes.loadData(),
+        settings.reloadAccountSettings(),
+      ]);
+      await projects.refreshReminders();
+    }
+
+    for (final provider in [
+      projects,
+      income,
+      expenses,
+      notes,
+      wallet,
+      settings,
+    ]) {
+      provider.addListener(account.localChanged);
+    }
+    // Account changes reset the navigator as well as every provider cache.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(
-        Future.wait([
-          wallet.loadData(),
-          projects.loadData(),
-          expenses.loadData(),
-          income.loadData(),
-          notes.loadData(),
-        ]),
-      );
+      unawaited(() async {
+        await reloadData();
+        await account.start(reloadData);
+      }());
     });
   }
 
@@ -174,7 +197,12 @@ class PlannerApp extends StatelessWidget {
     final isDarkMode = context.select<SettingsProvider, bool>(
       (s) => s.isDarkMode,
     );
+    final accountId = context.select<AccountProvider, String?>(
+      (a) => a.user?.id,
+    );
     final app = CupertinoApp(
+      key: ValueKey(accountId ?? 'guest'),
+      navigatorKey: plannerNavigatorKey,
       title: 'appName'.tr(),
       debugShowCheckedModeBanner: false,
       theme: isDarkMode ? AppThems.darkTheme() : AppThems.lightTheme(),
@@ -184,7 +212,9 @@ class PlannerApp extends StatelessWidget {
       home: const SplashScreen(),
       scrollBehavior: const AppScrollBehavior(),
       builder: (context, child) => AppLayoutHost(
-        child: AppLockGate(child: child ?? const SizedBox.shrink()),
+        child: AccountGuard(
+          child: AppLockGate(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
 

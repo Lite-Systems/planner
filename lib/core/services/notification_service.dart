@@ -108,6 +108,9 @@ class NotificationService {
     );
   });
 
+  Future<void> cancelAllTaskReminders() =>
+      _runSafely('clear reminders', _notificationsPlugin.cancelAll);
+
   Future<void> cancelTaskReminder(String taskId) => _runSafely(
     'cancel task reminder',
     () => _notificationsPlugin.cancel(id: _idForTask(taskId)),
