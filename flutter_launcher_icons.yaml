@@ -32,4 +32,5 @@ flutter_launcher_icons:
 
   macos:
     generate: true
-    image_path: "assets/logo/logo.png"
+    # Preserve transparent padding so the Dock icon matches neighboring apps.
+    image_path: "assets/logo/logo_macos.png"
